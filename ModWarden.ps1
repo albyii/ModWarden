@@ -213,48 +213,103 @@ $KnownClients = @(
 #  UI HELPERS
 # ---------------------------------------------------------------------------
 
+$UiWidth = 80
+
+function Write-BoxTop {
+    param([int]$Width = $UiWidth, [string]$Color = "DarkCyan")
+    Write-Host ("  " + [char]0x2554 + ([string][char]0x2550 * ($Width - 2)) + [char]0x2557) -ForegroundColor $Color
+}
+
+function Write-BoxBottom {
+    param([int]$Width = $UiWidth, [string]$Color = "DarkCyan")
+    Write-Host ("  " + [char]0x255A + ([string][char]0x2550 * ($Width - 2)) + [char]0x255D) -ForegroundColor $Color
+}
+
+function Write-BoxDivider {
+    param([int]$Width = $UiWidth, [string]$Color = "DarkCyan")
+    Write-Host ("  " + [char]0x2560 + ([string][char]0x2550 * ($Width - 2)) + [char]0x2563) -ForegroundColor $Color
+}
+
+function Write-BoxLine {
+    param(
+        [string]$Text = "",
+        [string]$BorderColor = "DarkCyan",
+        [string]$TextColor = "White",
+        [int]$Width = $UiWidth,
+        [ValidateSet("Center","Left")][string]$Align = "Center"
+    )
+    $inner = $Width - 2
+    if ($Text.Length -gt $inner) { $Text = $Text.Substring(0, $inner) }
+    if ($Align -eq "Center") {
+        $totalPad = $inner - $Text.Length
+        $left = [Math]::Floor($totalPad / 2)
+        $right = $totalPad - $left
+        $line = (" " * $left) + $Text + (" " * $right)
+    } else {
+        $line = ("  " + $Text).PadRight($inner)
+    }
+    Write-Host ("  " + [char]0x2551) -ForegroundColor $BorderColor -NoNewline
+    Write-Host $line -ForegroundColor $TextColor -NoNewline
+    Write-Host ([string][char]0x2551) -ForegroundColor $BorderColor
+}
+
 function Show-Banner {
     Clear-Host
-    Write-Host "+----------------------------------------------------------------------------+" -ForegroundColor DarkCyan
-    Write-Host "|                                                                            |" -ForegroundColor DarkCyan
-    Write-Host "|                              M O D W A R D E N                             |" -ForegroundColor Cyan
-    Write-Host "|                         MINECRAFT FORENSIC ANALYZER                         |" -ForegroundColor DarkCyan
-    Write-Host "|                                                                            |" -ForegroundColor DarkCyan
-    Write-Host "+----------------------------------------------------------------------------+" -ForegroundColor DarkCyan
+    Write-BoxTop
+    Write-BoxLine -Text ""
+    Write-BoxLine -Text "M O D W A R D E N" -TextColor Cyan
+    Write-BoxLine -Text "Minecraft Forensic Analyzer" -TextColor DarkCyan
+    Write-BoxLine -Text ""
+    Write-BoxBottom
     Write-Host ""
+}
+
+function Show-MenuOption {
+    param([string]$Key, [string]$Title, [string]$Desc = "")
+    Write-Host "   " -NoNewline
+    Write-Host "[$Key]" -NoNewline -ForegroundColor Cyan
+    Write-Host "  $Title" -ForegroundColor White
+    if ($Desc) { Write-Host ("        " + $Desc) -ForegroundColor DarkGray }
+}
+
+function Write-SectionRule {
+    Write-Host ("  " + ([string][char]0x2500 * ($UiWidth - 2))) -ForegroundColor DarkGray
 }
 
 function Show-MainMenu {
     Show-Banner
-    Write-Host "  SCAN OPTIONS"
+    Write-BoxTop
+    Write-BoxLine -Text "SCAN OPTIONS" -TextColor Yellow
+    Write-BoxBottom
     Write-Host ""
-    Write-Host "  [1]  MINECRAFT SCAN"
-    Write-Host "       Scan selected Minecraft / mod directories."
+    Show-MenuOption -Key "1" -Title "MINECRAFT SCAN"    -Desc "Scan selected Minecraft / mod directories."
     Write-Host ""
-    Write-Host "  [2]  FULL PC SCAN"
-    Write-Host "       Search the accessible PC for relevant signatures."
+    Show-MenuOption -Key "2" -Title "FULL PC SCAN"      -Desc "Search known Minecraft/launcher locations across the PC."
     Write-Host ""
-    Write-Host "  [3]  CUSTOM PATH"
-    Write-Host "       Scan any directory you specify."
+    Show-MenuOption -Key "3" -Title "CUSTOM PATH"       -Desc "Scan any directory you specify."
     Write-Host ""
-    Write-Host "  [4]  EXIT"
+    Show-MenuOption -Key "4" -Title "EXIT"
+    Write-Host ""
+    Write-SectionRule
     Write-Host ""
     return Read-Host "  Select an option [1-4]"
 }
 
 function Show-MinecraftMenu {
     Show-Banner
-    Write-Host "  MINECRAFT SCAN"
+    Write-BoxTop
+    Write-BoxLine -Text "MINECRAFT SCAN" -TextColor Yellow
+    Write-BoxBottom
     Write-Host ""
-    Write-Host "  Select how ModWarden should locate the mods:"
+    Write-Host "  Select how ModWarden should locate the mods:" -ForegroundColor DarkGray
     Write-Host ""
-    Write-Host "  [1]  ENTER MODS PATH"
-    Write-Host "       Enter the exact folder containing the mods."
+    Show-MenuOption -Key "1" -Title "ENTER MODS PATH"            -Desc "Enter the exact folder containing the mods."
     Write-Host ""
-    Write-Host "  [2]  SCAN MINECRAFT DIRECTORIES"
-    Write-Host "       Search common Minecraft installation locations."
+    Show-MenuOption -Key "2" -Title "SCAN MINECRAFT DIRECTORIES" -Desc "Search common Minecraft installation locations."
     Write-Host ""
-    Write-Host "  [3]  BACK"
+    Show-MenuOption -Key "3" -Title "BACK"
+    Write-Host ""
+    Write-SectionRule
     Write-Host ""
     return Read-Host "  Select an option [1-3]"
 }
@@ -637,13 +692,7 @@ function Invoke-ModsScan {
     $jars = Get-ChildItem -Path $ModsPath -Filter *.jar -File -ErrorAction SilentlyContinue
     $sw = [System.Diagnostics.Stopwatch]::StartNew()
 
-    $results = @()
-    $count = 0
-    foreach ($jar in $jars) {
-        $count++
-        Write-Host "`r  Analyzing $count / $($jars.Count): $($jar.Name)".PadRight(90) -NoNewline
-        $results += Analyze-Jar -JarPath $jar.FullName
-    }
+    $results = Invoke-ParallelJarAnalysis -Jars $jars
     Write-Host ""
     $sw.Stop()
 
@@ -652,30 +701,130 @@ function Invoke-ModsScan {
     Show-Report -Results $results -TargetLabel $TargetLabel -FilesAnalyzed $jars.Count -ElapsedSeconds $sw.Elapsed.TotalSeconds -Mode "MINECRAFT" -JvmInfo $jvm
 }
 
-function Invoke-FullPcScan {
-    $drives = Get-PSDrive -PSProvider FileSystem | Where-Object { $_.Free -ne $null }
-    $allJars = @()
-    Write-Host "  Searching accessible drives for JAR files (this can take a while)..."
-    foreach ($d in $drives) {
-        try {
-            $allJars += Get-ChildItem -Path "$($d.Root)" -Filter *.jar -Recurse -File -ErrorAction SilentlyContinue -Force |
-                Where-Object { $_.FullName -match '(?i)mods|minecraft|modrinth|prismlauncher|curseforge' }
-        } catch { }
+# Known launcher / mod-instance locations. Scanning only these (plus a shallow,
+# name-filtered pass over other drives) is what makes "Full PC Scan" fast -
+# the previous version walked every file on every drive before filtering,
+# which is what made it slow.
+function Get-FullPcScanTargets {
+    $userProfile = $env:USERPROFILE
+    $targets = New-Object System.Collections.Generic.List[string]
+
+    $known = @(
+        (Join-Path $userProfile "AppData\Roaming\.minecraft"),
+        (Join-Path $userProfile "curseforge\minecraft\Instances"),
+        (Join-Path $userProfile "AppData\Roaming\ModrinthApp\profiles"),
+        (Join-Path $userProfile ".modrinth\profiles"),
+        (Join-Path $userProfile "AppData\Roaming\PrismLauncher\instances"),
+        (Join-Path $userProfile "AppData\Local\PrismLauncher\instances"),
+        (Join-Path $userProfile "AppData\Roaming\MultiMC\instances"),
+        (Join-Path $userProfile "AppData\Roaming\.technic\modpacks"),
+        (Join-Path $userProfile "Downloads")
+    )
+    foreach ($k in $known) {
+        if (Test-Path $k) { $targets.Add($k) }
     }
 
-    $sw = [System.Diagnostics.Stopwatch]::StartNew()
-    $results = @()
-    $count = 0
-    foreach ($jar in $allJars) {
-        $count++
-        Write-Host "`r  Analyzing $count / $($allJars.Count): $($jar.Name)".PadRight(90) -NoNewline
-        $results += Analyze-Jar -JarPath $jar.FullName
+    # Other fixed drives: only look one level deep for obviously relevant
+    # folder names, instead of recursing the whole drive.
+    try {
+        $systemRoot = (Join-Path $env:SystemDrive "")
+        $otherDrives = Get-PSDrive -PSProvider FileSystem -ErrorAction SilentlyContinue |
+            Where-Object { $_.Free -ne $null -and (Join-Path "$($_.Root)" "") -ne $systemRoot }
+
+        foreach ($d in $otherDrives) {
+            Get-ChildItem -Path $d.Root -Directory -ErrorAction SilentlyContinue -Force |
+                Where-Object { $_.Name -match '(?i)minecraft|mods|curseforge|modrinth|prism|multimc|technic|launcher' } |
+                ForEach-Object { $targets.Add($_.FullName) }
+        }
+    } catch { }
+
+    return $targets | Select-Object -Unique
+}
+
+# Runs Analyze-Jar across a runspace pool so per-file work (hashing, the
+# Modrinth verification lookup, unzip + text scan) happens concurrently
+# instead of one file at a time - this is the other big speed win, since
+# each Modrinth lookup can take a couple of seconds on its own.
+function Invoke-ParallelJarAnalysis {
+    param(
+        [System.IO.FileInfo[]]$Jars,
+        [int]$ThrottleLimit = 8
+    )
+
+    if (-not $Jars -or $Jars.Count -eq 0) { return @() }
+
+    $iss = [System.Management.Automation.Runspaces.InitialSessionState]::CreateDefault()
+
+    foreach ($fn in @(
+        'Get-Sha1Hash','Test-ModrinthVerified','Get-DownloadSource',
+        'Test-FullwidthUnicode','Get-ObfuscationFlags','Test-KnownObfuscator','Analyze-Jar'
+    )) {
+        $def = Get-Item "function:$fn" -ErrorAction Stop
+        $entry = New-Object System.Management.Automation.Runspaces.SessionStateFunctionEntry($fn, $def.Definition)
+        $iss.Commands.Add($entry)
     }
+
+    foreach ($varName in @('CheatPatterns','CheatStrings','KnownObfuscators','SourceClassification','KnownClients')) {
+        $val = Get-Variable -Name $varName -Scope Script -ValueOnly
+        $entry = New-Object System.Management.Automation.Runspaces.SessionStateVariableEntry($varName, $val, $null)
+        $iss.Variables.Add($entry)
+    }
+
+    $pool = [runspacefactory]::CreateRunspacePool(1, $ThrottleLimit, $iss, $Host)
+    $pool.Open()
+
+    $tasks = New-Object System.Collections.Generic.List[object]
+    foreach ($jar in $Jars) {
+        $ps = [powershell]::Create()
+        $ps.RunspacePool = $pool
+        [void]$ps.AddScript({
+            param($Path)
+            Analyze-Jar -JarPath $Path
+        }).AddArgument($jar.FullName)
+
+        $tasks.Add([pscustomobject]@{
+            Pipe   = $ps
+            Handle = $ps.BeginInvoke()
+        })
+    }
+
+    $results = @()
+    $done = 0
+    $total = $tasks.Count
+    foreach ($t in $tasks) {
+        $done++
+        Write-Host "`r  Analyzing $done / $total".PadRight(90) -NoNewline
+        try {
+            $r = $t.Pipe.EndInvoke($t.Handle)
+            if ($r) { $results += $r }
+        } catch { }
+        finally { $t.Pipe.Dispose() }
+    }
+
+    $pool.Close()
+    $pool.Dispose()
+
+    return $results
+}
+
+function Invoke-FullPcScan {
+    Write-Host "  Searching known Minecraft/launcher locations..." -ForegroundColor DarkGray
+    $targets = Get-FullPcScanTargets
+
+    $allJars = New-Object System.Collections.Generic.List[object]
+    foreach ($t in $targets) {
+        Get-ChildItem -Path $t -Filter *.jar -Recurse -File -ErrorAction SilentlyContinue -Force |
+            ForEach-Object { $allJars.Add($_) }
+    }
+    $allJars = $allJars | Sort-Object FullName -Unique
+
+    $sw = [System.Diagnostics.Stopwatch]::StartNew()
+    $results = Invoke-ParallelJarAnalysis -Jars $allJars
     Write-Host ""
     $sw.Stop()
 
     $jvm = Get-JvmInjectionFlags
-    Show-Report -Results $results -TargetLabel "Full PC" -FilesAnalyzed $allJars.Count -ElapsedSeconds $sw.Elapsed.TotalSeconds -Mode "FULL PC" -JvmInfo $jvm
+    Show-Report -Results $results -TargetLabel "Full PC ($($targets.Count) location(s) checked)" -FilesAnalyzed $allJars.Count -ElapsedSeconds $sw.Elapsed.TotalSeconds -Mode "FULL PC" -JvmInfo $jvm
 }
 
 # ---------------------------------------------------------------------------
@@ -686,9 +835,9 @@ function Show-Report {
     param($Results, $TargetLabel, $FilesAnalyzed, $ElapsedSeconds, $Mode, $JvmInfo)
 
     Show-Banner
-    Write-Host "+----------------------------------------------------------------------------+" -ForegroundColor DarkGreen
-    Write-Host "|                           SCAN COMPLETE                                    |" -ForegroundColor Green
-    Write-Host "+----------------------------------------------------------------------------+" -ForegroundColor DarkGreen
+    Write-BoxTop -Color DarkGreen
+    Write-BoxLine -Text "SCAN COMPLETE" -BorderColor DarkGreen -TextColor Green
+    Write-BoxBottom -Color DarkGreen
     Write-Host ""
 
     $jarCount = $Results.Count
@@ -753,8 +902,9 @@ function Show-Report {
 
     $verified = $Results | Where-Object { $_.Verified }
     if ($verified.Count -gt 0) {
-        Write-Host "  VERIFIED MODS"
-        foreach ($v in $verified) { Write-Host "       - $($v.Name)" }
+        Write-Host "  VERIFIED (SAFE) MODS" -ForegroundColor DarkGray
+        Write-Host "       $($verified.Count) mod(s) matched a verified Modrinth release and were excluded" -ForegroundColor DarkGray
+        Write-Host "       from the risk list above." -ForegroundColor DarkGray
         Write-Host ""
     }
 
@@ -769,19 +919,24 @@ function Show-Report {
         Write-Host ""
     }
 
-    Write-Host "  VERDICT"
+    $verdictColor = switch ($verdictLabel) {
+        "HIGH CONFIDENCE CHEATER" { "Red" }
+        "LIKELY CHEATER"          { "Red" }
+        "SUSPICIOUS"              { "Yellow" }
+        default                   { "Green" }
+    }
+
+    Write-BoxTop -Color DarkGray
+    Write-BoxLine -Text "VERDICT" -BorderColor DarkGray -TextColor Yellow
+    Write-BoxLine -Text ""
+    Write-BoxLine -Text $verdictLabel -TextColor $verdictColor
+    Write-BoxLine -Text "Threshold: 51 / 100" -TextColor DarkGray
+    Write-BoxLine -Text ""
+    Write-BoxBottom -Color DarkGray
     Write-Host ""
-    Write-Host "                            $verdictLabel"
+    Write-Host "  Unsure about a detection? Review manually before acting." -ForegroundColor DarkGray
     Write-Host ""
-    Write-Host "                     Threshold: 51 / 100"
-    Write-Host ""
-    Write-Host "  ----------------------------------------------------------------------"
-    Write-Host ""
-    Write-Host "                       MODWARDEN"
-    Write-Host ""
-    Write-Host "                  Unsure about a detection? Review manually before acting."
-    Write-Host ""
-    Write-Host "  ----------------------------------------------------------------------"
+    Write-SectionRule
     Write-Host ""
     Read-Host "  Press Enter to return to the main menu"
 }
@@ -804,20 +959,28 @@ while ($true) {
         }
         "2" {
             Show-Banner
-            Write-Host "  FULL PC SCAN"
+            Write-BoxTop
+            Write-BoxLine -Text "FULL PC SCAN" -TextColor Yellow
+            Write-BoxBottom
             Write-Host ""
-            Write-Host "  ModWarden will scan accessible locations across the PC."
-            Write-Host "  This may take significantly longer than a Minecraft scan."
+            Write-Host "  ModWarden will search known Minecraft/launcher locations" -ForegroundColor DarkGray
+            Write-Host "  across the PC instead of walking the entire filesystem," -ForegroundColor DarkGray
+            Write-Host "  so this stays fast even on large drives." -ForegroundColor DarkGray
             Write-Host ""
-            Write-Host "  [1]  CONTINUE"
-            Write-Host "  [2]  BACK"
+            Show-MenuOption -Key "1" -Title "CONTINUE"
+            Write-Host ""
+            Show-MenuOption -Key "2" -Title "BACK"
+            Write-Host ""
+            Write-SectionRule
             Write-Host ""
             $c = Read-Host "  Select an option [1-2]"
             if ($c -eq "1") { Invoke-FullPcScan }
         }
         "3" {
             Show-Banner
-            Write-Host "  CUSTOM PATH"
+            Write-BoxTop
+            Write-BoxLine -Text "CUSTOM PATH" -TextColor Yellow
+            Write-BoxBottom
             Write-Host ""
             $p = Read-Host "  Enter directory to scan"
             if (Test-Path $p) {
@@ -827,7 +990,7 @@ while ($true) {
                 Start-Sleep -Seconds 2
             }
         }
-        "4" { Write-Host "  Exiting ModWarden."; break }
+        "4" { Write-Host "  Exiting ModWarden." -ForegroundColor DarkGray; break }
         default { }
     }
 }
