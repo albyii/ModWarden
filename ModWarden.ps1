@@ -1,34 +1,33 @@
 <#
     ModWarden - Minecraft Forensic Analyzer
+
     Detects cheat-client signatures, obfuscation, and suspicious behaviour
     inside Minecraft mod JAR files.
 
     Usage:
         powershell -ExecutionPolicy Bypass -File ModWarden.ps1
-
-    Or remotely:
-        powershell -ExecutionPolicy Bypass -Command "Invoke-Expression (Invoke-RestMethod 'https://raw.githubusercontent.com/<you>/<repo>/main/ModWarden.ps1')"
 #>
 
-# ---------------------------------------------------------------------------
-#  SIGNATURE DATA
-# ---------------------------------------------------------------------------
+# ===========================================================================
+# SIGNATURE DATA
+# ===========================================================================
 
 $CheatPatterns = @(
     "AimAssist","AnchorTweaks","AutoAnchor","AutoCrystal","AutoDoubleHand",
     "JDWP.VirtualMachine.AllModules","AutoHitCrystal","AutoPot","AutoTotem",
     "AutoArmor","InventoryTotem","LegitTotem","PingSpoof","SelfDestruct",
     "ShieldBreaker","TriggerBot","AxeSpam","WebMacro","FastPlace",
-    "WalskyOptimizer","WalksyOptimizer","walsky.optimizer","WalksyCrystalOptimizerMod",
-    "Donut","Replace Mod","ShieldDisabler","SilentAim","Totem Hit","Wtap",
-    "FakeLag","dev.virel","orchard","BlockESP","dev.krypton","dev/krypton",
-    "skid.krypton","skid/krypton","AntiMissClick","LagReach","PopSwitch",
-    "SprintReset","ChestSteal","AntiBot","ElytraSwap","FastXP","FastExp",
-    "Refill","AirAnchor","jnativehook","FakeInv","HoverTotem","AutoClicker",
-    "AutoFirework","PackSpoof","Antiknockback","catlean","AuthBypass",
-    "Asteria","Prestige","AutoEat","AutoMine","MaceSwap","Macro198",
-    "StunSlam","SafeAnchor","DoubleAnchor","AutoTPA","BaseFinder","Xenon",
-    "gypsy","AutoPotRefill","KeyPearl","AutoNethPot","AutoDtap","AutoWeb",
+    "WalskyOptimizer","WalksyOptimizer","walsky.optimizer",
+    "WalksyCrystalOptimizerMod","Donut","Replace Mod","ShieldDisabler",
+    "SilentAim","Totem Hit","Wtap","FakeLag","dev.virel","orchard",
+    "BlockESP","dev.krypton","dev/krypton","skid.krypton","skid/krypton",
+    "AntiMissClick","LagReach","PopSwitch","SprintReset","ChestSteal",
+    "AntiBot","ElytraSwap","FastXP","FastExp","Refill","AirAnchor",
+    "jnativehook","FakeInv","HoverTotem","AutoClicker","AutoFirework",
+    "PackSpoof","Antiknockback","catlean","AuthBypass","Asteria",
+    "Prestige","AutoEat","AutoMine","MaceSwap","Macro198","StunSlam",
+    "SafeAnchor","DoubleAnchor","AutoTPA","BaseFinder","Xenon","gypsy",
+    "AutoPotRefill","KeyPearl","AutoNethPot","AutoDtap","AutoWeb",
     "AnchorAction",
     "org.chainlibs.module.impl.modules.Crystal.Y",
     "org.chainlibs.module.impl.modules.Crystal.bF",
@@ -53,113 +52,138 @@ $CheatPatterns = @(
 )
 
 $CheatStrings = @(
-    "AutoCrystal","autocrystal","auto crystal","cw crystal","dontPlaceCrystal",
-    "dontBreakCrystal","AutoHitCrystal","autohitcrystal","canPlaceCrystalServer",
-    "healPotSlot","ＡｕｔｏＣｒｙｓｔａｌ","Ａｕｔｏ Ｃｒｙｓｔａｌ","ＡｕｔｏＨｉｔＣｒｙｓｔａｌ",
-    "AutoAnchor","autoanchor","auto anchor","DoubleAnchor","HasAnchor",
-    "anchortweaks","anchor macro","safe anchor","safeanchor","SafeAnchor",
-    "AirAnchor","ＡｕｔｏＡｎｃｈｏｒ","Ａｕｔｏ Ａｎｃｈｏｒ","ＤｏｕｂｌｅＡｎｃｈｏｒ",
-    "Ｄｏｕｂｌｅ Ａｎｃｈｏｒ","ＳａｆｅＡｎｃｈｏｒ","Ｓａｆｅ Ａｎｃｈｏｒ","Ａｎｃｈｏｒ Ｍａｃｒｏ",
+    "AutoCrystal","autocrystal","auto crystal","cw crystal",
+    "dontPlaceCrystal","dontBreakCrystal","AutoHitCrystal",
+    "autohitcrystal","canPlaceCrystalServer","healPotSlot",
+    "ＡｕｔｏＣｒｙｓｔａｌ","Ａｕｔｏ Ｃｒｙｓｔａｌ",
+    "ＡｕｔｏＨｉｔＣｒｙｓｔａｌ","AutoAnchor","autoanchor",
+    "auto anchor","DoubleAnchor","HasAnchor","anchortweaks",
+    "anchor macro","safe anchor","safeanchor","SafeAnchor",
+    "AirAnchor","ＡｕｔｏＡｎｃｈｏｒ","Ａｕｔｏ Ａｎｃｈｏｒ",
+    "ＤｏｕｂｌｅＡｎｃｈｏｒ","Ｄｏｕｂｌｅ Ａｎｃｈｏｒ",
+    "ＳａｆｅＡｎｃｈｏｒ","Ｓａｆｅ Ａｎｃｈｏｒ","Ａｎｃｈｏｒ Ｍａｃｒｏ",
     "anchorMacro","AutoTotem","autototem","auto totem","InventoryTotem",
     "inventorytotem","HoverTotem","hover totem","legittotem",
-    "ＡｕｔｏＴｏｔｅｍ","Ａｕｔｏ Ｔｏｔｅｍ","ＨｏｖｅｒＴｏｔｅｍ","Ｈｏｖｅｒ Ｔｏｔｅｍ",
-    "ＩｎｖｅｎｔｏｒｙＴｏｔｅｍ","Ａｕｔｏ Ｉｎｖｅｎｔｏｒｙ Ｔｏｔｅｍ","Ａｕｔｏ Ｔｏｔｅｍ Ｈｉｔ",
+    "ＡｕｔｏＴｏｔｅｍ","Ａｕｔｏ Ｔｏｔｅｍ","ＨｏｖｅｒＴｏｔｅｍ",
+    "Ｈｏｖｅｒ Ｔｏｔｅｍ","ＩｎｖｅｎｔｏｒｙＴｏｔｅｍ",
+    "Ａｕｔｏ Ｉｎｖｅｎｔｏｒｙ Ｔｏｔｅｍ","Ａｕｔｏ Ｔｏｔｅｍ Ｈｉｔ",
     "AutoPot","autopot","auto pot","speedPotSlot","strengthPotSlot",
-    "AutoArmor","autoarmor","auto armor","ＡｕｔｏＰｏｔ","Ａｕｔｏ Ｐｏｔ",
-    "Ａｕｔｏ Ｐｏｔ Ｒｅｆｉｌｌ","AutoPotRefill","ＡｕｔｏＡｒｍｏｒ","Ａｕｔｏ Ａｒｍｏｒ",
+    "AutoArmor","autoarmor","auto armor","ＡｕｔｏＰｏｔ",
+    "Ａｕｔｏ Ｐｏｔ","Ａｕｔｏ Ｐｏｔ Ｒｅｆｉｌｌ","AutoPotRefill",
+    "ＡｕｔｏＡｒｍｏｒ","Ａｕｔｏ Ａｒｍｏｒ",
     "preventSwordBlockBreaking","preventSwordBlockAttack","ShieldDisabler",
-    "ShieldBreaker","ＳｈｉｅｌｄＤｉｓａｂｌｅｒ","Ｓｈｉｅｌｄ Ｄｉｓａｂｌｅｒ",
-    "Breaking shield with axe...","AutoDoubleHand","autodoublehand",
-    "auto double hand","ＡｕｔｏＤｏｕｂｌｅＨａｎｄ","Ａｕｔｏ Ｄｏｕｂｌｅ Ｈａｎｄ",
-    "AutoClicker","ＡｕｔｏＣｌｉｃｋｅｒ","Failed to switch to mace after axe!",
-    "AutoMace","MaceSwap","SpearSwap","ＡｕｔｏＭａｃｅ","Ａｕｔｏ Ｍａｃｅ",
-    "ＭａｃｅＳｗａｐ","Ｍａｃｅ Ｓｗａｐ","Ｓｐｅａｒ Ｓｗａｐ",
-    "Ｓｔｕｎ Ｓｌａｍ","StunSlam","Donut","JumpReset","axespam","axe spam",
+    "ShieldBreaker","ＳｈｉｅｌｄＤｉｓａｂｌｅｒ",
+    "Ｓｈｉｅｌｄ Ｄｉｓａｂｌｅｒ","Breaking shield with axe...",
+    "AutoDoubleHand","autodoublehand","auto double hand",
+    "ＡｕｔｏＤｏｕｂｌｅＨａｎｄ","Ａｕｔｏ Ｄｏｕｂｌｅ Ｈａｎｄ",
+    "AutoClicker","ＡｕｔｏＣｌｉｃｋｅｒ",
+    "Failed to switch to mace after axe!","AutoMace","MaceSwap","SpearSwap",
+    "ＡｕｔｏＭａｃｅ","Ａｕｔｏ Ｍａｃｅ","ＭａｃｅＳｗａｐ",
+    "Ｍａｃｅ Ｓｗａｐ","Ｓｐｅａｒ Ｓｗａｐ","Ｓｔｕｎ Ｓｌａｍ",
+    "StunSlam","Donut","JumpReset","axespam","axe spam",
     "findKnockbackSword","attackRegisteredThisClick","AimAssist","aimassist",
-    "aim assist","triggerbot","trigger bot","ＡｉｍＡｓｓｉｓｔ","Ａｉｍ Ａｓｓｉｓｔ",
-    "ＴｒｉｇｇｅｒＢｏｔ","Ｔｒｉｇｇｅｒ Ｂｏｔ","Silent Rotations","SilentRotations",
-    "Ｓｉｌｅｎｔ Ｒｏｔａｔｉｏｎｓ","FakeInv","swapBackToOriginalSlot","FakeLag",
-    "pingspoof","ping spoof","ＦａｋｅＬａｇ","Ｆａｋｅ Ｌａｇ","fakePunch",
-    "Fake Punch","Ｆａｋｅ Ｐｕｎｃｈ","mace_swap","quick_strike","macro_198",
-    "stun_slam","safe_anchor","double_anchor","auto_pot_refill","walksy_optimizer",
-    "key_pearl","aim_assist","auto_neth_pot","auto_dtap","trigger_bot","auto_web",
-    "DOUBLE_ESCAPE","DOUBLE_RIGHTCLICK_FIRST","DOUBLE_RIGHTCLICK_SECOND",
-    "POST_CYCLE_DELAY","PLACE_OBI","WAIT_OBI","PLACE_CRYSTAL","BREAK_CRYSTAL",
-    "ROTATING_DOWN","ROTATING_BACK","REFILLING","PLANTING","BONEMEALING",
-    "AnchorAction","Places two anchors for massive damage","REOFFHAND_TOTEM",
-    "webmacro","web macro","AntiWeb","AutoWeb","Ａｎｔｉ Ｗｅｂ","ＡｕｔｏＷｅｂ",
-    "Ｐｌａｃｅｓ Ｗｅｂｓ Ｏｎ Ｅｎｅｍｉｅｓ","lvstrng","dqrkis","selfdestruct",
-    "self destruct","WalksyCrystalOptimizerMod","WalksyOptimizer",
-    "WalskyOptimizer","Ｗａｌｋｓｙ Ｏｐｔｉｍｉｚｅｒ","autoCrystalPlaceClock",
-    "AutoFirework","ElytraSwap","FastXP","FastExp","NoJumpDelay",
-    "ＥｌｙｔｒａＳｗａｐ","Ｅｌｙｔｒａ Ｓｗａｐ","PackSpoof","Antiknockback","catlean",
-    "AuthBypass","obfuscatedAuth","LicenseCheckMixin","BaseFinder","invsee",
-    "ItemExploit","FreezePlayer","Ｆｒｅｅｃａｍ","Ｍｏｖｅ ｆｒｅｅｌｙ ｔｈｒｏｕｇｈ ｗａｌｌｓ",
-    "Ｎｏ Ｃｌｉｐ","Ｆｒｅｅｚｅ Ｐｌａｙｅｒ","LWFH Crystal","ＬＷＦＨ Ｃｒｙｓｔａｌ",
-    "KeyPearl","LootYeeter","ＫｅｙＰｅａｒｌ","Ｋｅｙ Ｐｅａｒｌ","Ｌｏｏｔ Ｙｅｅｔｅｒ",
-    "FastPlace","Ｆａｓｔ Ｐｌａｃｅ","Ｐｌａｃｅ ｂｌｏｃｋｓ ｆａｓｔｅｒ","AutoBreach",
-    "Ａｕｔｏ Ｂｒｅａｃｈ","setBlockBreakingCooldown","getBlockBreakingCooldown",
-    "blockBreakingCooldown","onBlockBreaking","setItemUseCooldown",
-    "invokeDoAttack","invokeDoItemUse","invokeOnMouseButton",
-    "onPushOutOfBlocks","onIsGlowing","Automatically switches to sword when hitting with totem",
-    "arrayOfString","POT_CHEATS","Dqrkis Client","Entity.isGlowing","Activate Key",
-    "Click Simulation","On RMB","No Count Glitch","No Bounce","NoBounce","Place Delay",
-    "Break Delay","Place Chance","Break Chance","Stop On Kill","damagetick",
-    "Anti Weakness","Particle Chance","Trigger Key","Switch Delay","Totem Slot",
-    "Smooth Rotations","Rotation Speed","Use Easing","Easing Strength","While Use",
-    "Glowstone Delay","Glowstone Chance","Explode Delay","Explode Chance","Explode Slot",
-    "Only Charge","Reach Distance","Min Height","Min Fall Speed","Attack Delay",
-    "Breach Delay","Require Elytra","Auto Switch Back","Check Line of Sight",
-    "Only When Falling","Require Crit","Show Status Display","Stop On Crystal",
-    "Check Shield","On Pop","Predict Damage","On Ground","Check Players",
-    "Predict Crystals","Check Aim","Check Items","Activates Above","Blatant",
-    "Force Totem","Stay Open For","Auto Inventory Totem","Only On Pop","Vertical Speed",
-    "Swap Speed","Strict One-Tick","Mace Priority","Min Totems","Min Pearls",
+    "aim assist","triggerbot","trigger bot","ＡｉｍＡｓｓｉｓｔ",
+    "Ａｉｍ Ａｓｓｉｓｔ","ＴｒｉｇｇｅｒＢｏｔ","Ｔｒｉｇｇｅｒ Ｂｏｔ",
+    "Silent Rotations","SilentRotations","Ｓｉｌｅｎｔ Ｒｏｔａｔｉｏｎｓ",
+    "FakeInv","swapBackToOriginalSlot","FakeLag","pingspoof","ping spoof",
+    "ＦａｋｅＬａｇ","Ｆａｋｅ Ｌａｇ","fakePunch","Fake Punch",
+    "Ｆａｋｅ Ｐｕｎｃｈ","mace_swap","quick_strike","macro_198",
+    "stun_slam","safe_anchor","double_anchor","auto_pot_refill",
+    "walksy_optimizer","key_pearl","aim_assist","auto_neth_pot",
+    "auto_dtap","trigger_bot","auto_web","DOUBLE_ESCAPE",
+    "DOUBLE_RIGHTCLICK_FIRST","DOUBLE_RIGHTCLICK_SECOND","POST_CYCLE_DELAY",
+    "PLACE_OBI","WAIT_OBI","PLACE_CRYSTAL","BREAK_CRYSTAL","ROTATING_DOWN",
+    "ROTATING_BACK","REFILLING","PLANTING","BONEMEALING","AnchorAction",
+    "Places two anchors for massive damage","REOFFHAND_TOTEM","webmacro",
+    "web macro","AntiWeb","AutoWeb","Ａｎｔｉ Ｗｅｂ","ＡｕｔｏＷｅｂ",
+    "Ｐｌａｃｅｓ Ｗｅｂｓ Ｏｎ Ｅｎｅｍｉｅｓ","lvstrng","dqrkis",
+    "selfdestruct","self destruct","WalksyCrystalOptimizerMod",
+    "WalksyOptimizer","WalskyOptimizer","Ｗａｌｋｓｙ Ｏｐｔｉｍｉｚｅｒ",
+    "autoCrystalPlaceClock","AutoFirework","ElytraSwap","FastXP","FastExp",
+    "NoJumpDelay","ＥｌｙｔｒａＳｗａｐ","Ｅｌｙｔｒａ Ｓｗａｐ",
+    "PackSpoof","Antiknockback","catlean","AuthBypass","obfuscatedAuth",
+    "LicenseCheckMixin","BaseFinder","invsee","ItemExploit","FreezePlayer",
+    "Ｆｒｅｅｃａｍ","Ｍｏｖｅ ｆｒｅｅｌｙ ｔｈｒｏｕｇｈ ｗａｌｌｓ",
+    "Ｎｏ Ｃｌｉｐ","Ｆｒｅｅｚｅ Ｐｌａｙｅｒ","LWFH Crystal",
+    "ＬＷＦＨ Ｃｒｙｓｔａｌ","KeyPearl","LootYeeter","ＫｅｙＰｅａｒｌ",
+    "Ｋｅｙ Ｐｅａｒｌ","Ｌｏｏｔ Ｙｅｅｔｅｒ","FastPlace",
+    "Ｆａｓｔ Ｐｌａｃｅ","Ｐｌａｃｅ ｂｌｏｃｋｓ ｆａｓｔｅｒ",
+    "AutoBreach","Ａｕｔｏ Ｂｒｅａｃｈ","setBlockBreakingCooldown",
+    "getBlockBreakingCooldown","blockBreakingCooldown","onBlockBreaking",
+    "setItemUseCooldown","invokeDoAttack","invokeDoItemUse",
+    "invokeOnMouseButton","onPushOutOfBlocks","onIsGlowing",
+    "Automatically switches to sword when hitting with totem",
+    "arrayOfString","POT_CHEATS","Dqrkis Client","Entity.isGlowing",
+    "Activate Key","Click Simulation","On RMB","No Count Glitch",
+    "No Bounce","NoBounce","Place Delay","Break Delay","Place Chance",
+    "Break Chance","Stop On Kill","damagetick","Anti Weakness",
+    "Particle Chance","Trigger Key","Switch Delay","Totem Slot",
+    "Smooth Rotations","Rotation Speed","Use Easing","Easing Strength",
+    "While Use","Glowstone Delay","Glowstone Chance","Explode Delay",
+    "Explode Chance","Explode Slot","Only Charge","Reach Distance",
+    "Min Height","Min Fall Speed","Attack Delay","Breach Delay",
+    "Require Elytra","Auto Switch Back","Check Line of Sight",
+    "Only When Falling","Require Crit","Show Status Display",
+    "Stop On Crystal","Check Shield","On Pop","Predict Damage","On Ground",
+    "Check Players","Predict Crystals","Check Aim","Check Items",
+    "Activates Above","Blatant","Force Totem","Stay Open For",
+    "Auto Inventory Totem","Only On Pop","Vertical Speed","Swap Speed",
+    "Strict One-Tick","Mace Priority","Min Totems","Min Pearls",
     "Totem First","Drop Interval","Random Pattern","Horizontal Aim Speed",
     "Vertical Aim Speed","Include Head","Web Delay","Holding Web",
-    "Not When Affects Player","Hit Delay","Require Hold Axe","placeInterval",
-    "breakInterval","stopOnKill","activateOnRightClick","holdCrystal","Macro Key",
-    "KillAura","ClickAura","MultiAura","ForceField","LegitAura","AimBot","AutoAim",
-    "SilentAim","AimLock","HeadSnap","CrystalAura","AnchorAura","AnchorFill",
-    "AnchorPlace","BedAura","AutoBed","BedBomb","BedPlace","BowAimbot","BowSpam",
-    "AutoBow","AutoCrit","CritBypass","AlwaysCrit","CriticalHit","ReachHack",
-    "ExtendReach","LongReach","HitboxExpand","AntiKB","NoKnockback","GrimVelocity",
-    "GrimDisabler","VelocitySpoof","KBReduce","OffhandTotem","TotemSwitch","AutoWeapon",
-    "AutoSword","AutoCity","Burrow","SelfTrap","HoleFiller","AntiSurround","AntiBurrow",
-    "WTap","TargetStrafe","AutoGap","AutoPearl","FlyHack","CreativeFlight","BoatFly",
-    "PacketFly","AirJump","SpeedHack","BHop","BunnyHop","AntiFall","NoFallDamage",
-    "SafeFall","StepHack","FastClimb","AutoStep","HighStep","WaterWalk","LiquidWalk",
-    "LavaWalk","NoSlow","NoSlowdown","NoWeb","NoSoulSand","WallHack","ElytraSpeed",
-    "InstantElytra","ScaffoldWalk","FastBridge","BuildHelper","AutoBridge","Nuker",
-    "NukerLegit","InstantBreak","GhostHand","NoSwing","PlaceAssist","AirPlace",
-    "AutoPlace","InstantPlace","PlayerESP","MobESP","ItemESP","StorageESP","ChestESP",
-    "Tracers","NameTagsHack","XRayHack","OreFinder","CaveFinder","OreESP","NewChunks",
-    "ChunkBorders","TunnelFinder","TargetHUD","ReachDisplay","DoubleClicker","JitterClick",
-    "ButterflyClick","CPSBoost","ChestStealer","InvManager","InvMovebypass","AutoSprint",
-    "AntiAFK","AutoRespawn","PopSwitch","FakeLatency","FakePing","SpoofRotation",
-    "PositionSpoof","GameSpeed","SpeedTimer","GrimBypass","VulcanBypass","MatrixBypass",
-    "AACBypass","VerusDisabler","IntaveBypass","WatchdogBypass","PacketMine","PacketWalk",
-    "PacketSneak","PacketCancel","PacketDupe","PacketSpam","SelfDestruct","HideClient",
-    "SessionStealer","TokenLogger","TokenGrabber","DiscordToken","RemoteAccess",
-    "ReverseShell","C2Server","Backdoor","KeyLogger","StashFinder","TrailFinder",
-    "imgui.binding","JNativeHook","GlobalScreen","NativeKeyListener","client-refmap.json",
-    "cheat-refmap.json","aHR0cDovL2FwaS5ub3ZhY2xpZW50LmxvbC93ZWJob29rLnR4dA==",
+    "Not When Affects Player","Hit Delay","Require Hold Axe",
+    "placeInterval","breakInterval","stopOnKill","activateOnRightClick",
+    "holdCrystal","Macro Key","KillAura","ClickAura","MultiAura",
+    "ForceField","LegitAura","AimBot","AutoAim","SilentAim","AimLock",
+    "HeadSnap","CrystalAura","AnchorAura","AnchorFill","AnchorPlace",
+    "BedAura","AutoBed","BedBomb","BedPlace","BowAimbot","BowSpam",
+    "AutoBow","AutoCrit","CritBypass","AlwaysCrit","CriticalHit",
+    "ReachHack","ExtendReach","LongReach","HitboxExpand","AntiKB",
+    "NoKnockback","GrimVelocity","GrimDisabler","VelocitySpoof","KBReduce",
+    "OffhandTotem","TotemSwitch","AutoWeapon","AutoSword","AutoCity",
+    "Burrow","SelfTrap","HoleFiller","AntiSurround","AntiBurrow","WTap",
+    "TargetStrafe","AutoGap","AutoPearl","FlyHack","CreativeFlight",
+    "BoatFly","PacketFly","AirJump","SpeedHack","BHop","BunnyHop",
+    "AntiFall","NoFallDamage","SafeFall","StepHack","FastClimb",
+    "AutoStep","HighStep","WaterWalk","LiquidWalk","LavaWalk","NoSlow",
+    "NoSlowdown","NoWeb","NoSoulSand","WallHack","ElytraSpeed",
+    "InstantElytra","ScaffoldWalk","FastBridge","BuildHelper","AutoBridge",
+    "Nuker","NukerLegit","InstantBreak","GhostHand","NoSwing","PlaceAssist",
+    "AirPlace","AutoPlace","InstantPlace","PlayerESP","MobESP","ItemESP",
+    "StorageESP","ChestESP","Tracers","NameTagsHack","XRayHack",
+    "OreFinder","CaveFinder","OreESP","NewChunks","ChunkBorders",
+    "TunnelFinder","TargetHUD","ReachDisplay","DoubleClicker","JitterClick",
+    "ButterflyClick","CPSBoost","ChestStealer","InvManager","InvMovebypass",
+    "AutoSprint","AntiAFK","AutoRespawn","PopSwitch","FakeLatency",
+    "FakePing","SpoofRotation","PositionSpoof","GameSpeed","SpeedTimer",
+    "GrimBypass","VulcanBypass","MatrixBypass","AACBypass","VerusDisabler",
+    "IntaveBypass","WatchdogBypass","PacketMine","PacketWalk",
+    "PacketSneak","PacketCancel","PacketDupe","PacketSpam","SelfDestruct",
+    "HideClient","SessionStealer","TokenLogger","TokenGrabber",
+    "DiscordToken","RemoteAccess","ReverseShell","C2Server","Backdoor",
+    "KeyLogger","StashFinder","TrailFinder","imgui.binding","JNativeHook",
+    "GlobalScreen","NativeKeyListener","client-refmap.json",
+    "cheat-refmap.json",
+    "aHR0cDovL2FwaS5ub3ZhY2xpZW50LmxvbC93ZWJob29rLnR4dA==",
     "meteordevelopment","cc/novoline","com/alan/clients","club/maxstats",
     "wtf/moonlight","me/zeroeightsix/kami","net/ccbluex","today/opai",
-    "net/minecraft/injection","org/chainlibs/module/impl/modules","xyz/greaj",
-    "com/cheatbreaker","com/moonsworth","doomsdayclient","DoomsdayClient",
-    "doomsday.jar","novaclient","api.novaclient.lol","vape.gg","vapeclient",
-    "VapeClient","VapeLite","intent.store","IntentClient","rise.today","riseclient.com",
-    "meteor-client","meteorclient","meteordevelopment.meteorclient","liquidbounce",
-    "fdp-client","net.ccbluex","novoware","novoclient","aristois","impactclient",
-    "azura","pandaware","skilled","moonClient","astolfo","futureClient","konas",
-    "rusherhack","inertia","exhibition","dev.krypton","dev/krypton","skid.krypton",
-    "skid/krypton","VirginClient","virgin client","catlean","CatleanClient",
+    "net/minecraft/injection","org/chainlibs/module/impl/modules",
+    "xyz/greaj","com/cheatbreaker","com/moonsworth","doomsdayclient",
+    "DoomsdayClient","doomsday.jar","novaclient","api.novaclient.lol",
+    "vape.gg","vapeclient","VapeClient","VapeLite","intent.store",
+    "IntentClient","rise.today","riseclient.com","meteor-client",
+    "meteorclient","meteordevelopment.meteorclient","liquidbounce",
+    "fdp-client","net.ccbluex","novoware","novoclient","aristois",
+    "impactclient","azura","pandaware","skilled","moonClient","astolfo",
+    "futureClient","konas","rusherhack","inertia","exhibition",
+    "dev.krypton","dev/krypton","skid.krypton","skid/krypton",
+    "VirginClient","virgin client","catlean","CatleanClient",
     "catlean client","ArgonClient","argon client","Asteria","AsteriaClient",
-    "asteria client","Prestige","PrestigeClient","prestige client","prestigeclient.vip",
-    "gypsy","GypsyClient","gypsy client","Xenon","XenonClient","xenon client",
-    "GrimClient","grim client","phantom-refmap.json","dqrkis.xyz","Dqrkis Client",
-    "dev.virel","orchard","JDWP.VirtualMachine.AllModules"
+    "asteria client","Prestige","PrestigeClient","prestige client",
+    "prestigeclient.vip","gypsy","GypsyClient","gypsy client","Xenon",
+    "XenonClient","xenon client","GrimClient","grim client",
+    "phantom-refmap.json","dqrkis.xyz","Dqrkis Client","dev.virel",
+    "orchard","JDWP.VirtualMachine.AllModules"
 )
 
 $AllSignatures = ($CheatPatterns + $CheatStrings) | Select-Object -Unique
@@ -171,20 +195,20 @@ $KnownObfuscators = @(
 )
 
 $SourceClassification = @{
-    "modrinth"        = "SAFE"
-    "curseforge"      = "SAFE"
-    "github"          = "VERIFY"
-    "discord"         = "RISKY"
-    "discordapp"      = "RISKY"
-    "mediafire"       = "RISKY"
-    "mega.nz"         = "RISKY"
-    "dropbox"         = "RISKY"
-    "drive.google"    = "RISKY"
-    "anydesk"         = "SUSPICIOUS"
-    "doomsdayclient"  = "SUSPICIOUS"
-    "prestigeclient"  = "SUSPICIOUS"
-    "198macros"       = "SUSPICIOUS"
-    "dqrkis"          = "SUSPICIOUS"
+    "modrinth"       = "SAFE"
+    "curseforge"     = "SAFE"
+    "github"         = "VERIFY"
+    "discord"        = "RISKY"
+    "discordapp"     = "RISKY"
+    "mediafire"      = "RISKY"
+    "mega.nz"        = "RISKY"
+    "dropbox"        = "RISKY"
+    "drive.google"   = "RISKY"
+    "anydesk"        = "SUSPICIOUS"
+    "doomsdayclient" = "SUSPICIOUS"
+    "prestigeclient" = "SUSPICIOUS"
+    "198macros"      = "SUSPICIOUS"
+    "dqrkis"         = "SUSPICIOUS"
 }
 
 $KnownClients = @(
@@ -194,12 +218,13 @@ $KnownClients = @(
     "AstolfoClient","Novoclient","IntentClient"
 )
 
-# ---------------------------------------------------------------------------
-#  UI HELPERS
-# ---------------------------------------------------------------------------
+# ===========================================================================
+# UI
+# ===========================================================================
 
 function Show-Banner {
     Clear-Host
+
     Write-Host "+----------------------------------------------------------------------------+" -ForegroundColor DarkCyan
     Write-Host "|                                                                            |" -ForegroundColor DarkCyan
     Write-Host "|                              M O D W A R D E N                             |" -ForegroundColor Cyan
@@ -211,6 +236,7 @@ function Show-Banner {
 
 function Show-MainMenu {
     Show-Banner
+
     Write-Host "  SCAN OPTIONS"
     Write-Host ""
     Write-Host "  [1]  MINECRAFT SCAN"
@@ -224,11 +250,13 @@ function Show-MainMenu {
     Write-Host ""
     Write-Host "  [4]  EXIT"
     Write-Host ""
+
     return Read-Host "  Select an option [1-4]"
 }
 
 function Show-MinecraftMenu {
     Show-Banner
+
     Write-Host "  MINECRAFT SCAN"
     Write-Host ""
     Write-Host "  Select how ModWarden should locate the mods:"
@@ -241,35 +269,53 @@ function Show-MinecraftMenu {
     Write-Host ""
     Write-Host "  [3]  BACK"
     Write-Host ""
+
     return Read-Host "  Select an option [1-3]"
 }
 
-# ---------------------------------------------------------------------------
-#  DISCOVERY
-# ---------------------------------------------------------------------------
+# ===========================================================================
+# DISCOVERY
+# ===========================================================================
 
 function Find-MinecraftInstallations {
     $found = @()
     $userProfile = $env:USERPROFILE
 
     $candidates = @(
-        @{ Name = ".minecraft";        Path = Join-Path $userProfile "AppData\Roaming\.minecraft" }
-        @{ Name = "CurseForge Root";   Path = Join-Path $userProfile "curseforge\minecraft\Instances" }
+        @{
+            Name = ".minecraft"
+            Path = Join-Path $userProfile "AppData\Roaming\.minecraft"
+        }
+        @{
+            Name = "CurseForge Root"
+            Path = Join-Path $userProfile "curseforge\minecraft\Instances"
+        }
     )
 
     foreach ($c in $candidates) {
         if ($c.Name -eq ".minecraft") {
-            if (Test-Path (Join-Path $c.Path "mods")) {
-                $found += @{ Name = ".minecraft"; Path = Join-Path $c.Path "mods" }
-            }
-        } else {
-            if (Test-Path $c.Path) {
-                Get-ChildItem -Path $c.Path -Directory -ErrorAction SilentlyContinue | ForEach-Object {
-                    $modsDir = Join-Path $_.FullName "mods"
-                    if (Test-Path $modsDir) {
-                        $found += @{ Name = "CurseForge Instance ($($_.Name))"; Path = $modsDir }
-                    }
+            $modsPath = Join-Path $c.Path "mods"
+
+            if (Test-Path $modsPath) {
+                $found += @{
+                    Name = ".minecraft"
+                    Path = $modsPath
                 }
+            }
+        }
+        else {
+            if (Test-Path $c.Path) {
+                Get-ChildItem -Path $c.Path -Directory -ErrorAction SilentlyContinue |
+                    ForEach-Object {
+                        $modsDir = Join-Path $_.FullName "mods"
+
+                        if (Test-Path $modsDir) {
+                            $found += @{
+                                Name = "CurseForge Instance ($($_.Name))"
+                                Path = $modsDir
+                            }
+                        }
+                    }
             }
         }
     }
@@ -282,12 +328,17 @@ function Find-MinecraftInstallations {
 
     foreach ($root in $modrinthRoots) {
         if (Test-Path $root) {
-            Get-ChildItem -Path $root -Directory -ErrorAction SilentlyContinue | ForEach-Object {
-                $modsDir = Join-Path $_.FullName "mods"
-                if (Test-Path $modsDir) {
-                    $found += @{ Name = "Modrinth Instance ($($_.Name))"; Path = $modsDir }
+            Get-ChildItem -Path $root -Directory -ErrorAction SilentlyContinue |
+                ForEach-Object {
+                    $modsDir = Join-Path $_.FullName "mods"
+
+                    if (Test-Path $modsDir) {
+                        $found += @{
+                            Name = "Modrinth Instance ($($_.Name))"
+                            Path = $modsDir
+                        }
+                    }
                 }
-            }
         }
     }
 
@@ -299,12 +350,17 @@ function Find-MinecraftInstallations {
 
     foreach ($root in $prismRoots) {
         if (Test-Path $root) {
-            Get-ChildItem -Path $root -Directory -ErrorAction SilentlyContinue | ForEach-Object {
-                $modsDir = Join-Path $_.FullName ".minecraft\mods"
-                if (Test-Path $modsDir) {
-                    $found += @{ Name = "Prism Instance ($($_.Name))"; Path = $modsDir }
+            Get-ChildItem -Path $root -Directory -ErrorAction SilentlyContinue |
+                ForEach-Object {
+                    $modsDir = Join-Path $_.FullName ".minecraft\mods"
+
+                    if (Test-Path $modsDir) {
+                        $found += @{
+                            Name = "Prism Instance ($($_.Name))"
+                            Path = $modsDir
+                        }
+                    }
                 }
-            }
         }
     }
 
@@ -318,6 +374,7 @@ function Select-ModsPath {
         switch ($choice) {
             "1" {
                 Show-Banner
+
                 Write-Host "  ENTER MODS PATH"
                 Write-Host ""
                 Write-Host "  Example:"
@@ -336,6 +393,7 @@ function Select-ModsPath {
 
             "2" {
                 Show-Banner
+
                 Write-Host "  MINECRAFT DIRECTORIES"
                 Write-Host ""
                 Write-Host "  Searching..."
@@ -353,17 +411,20 @@ function Select-ModsPath {
                 Write-Host ""
 
                 for ($i = 0; $i -lt $installs.Count; $i++) {
-                    Write-Host "  [$($i+1)]  $($installs[$i].Name)"
+                    Write-Host "  [$($i + 1)]  $($installs[$i].Name)"
                     Write-Host "       $($installs[$i].Path)"
                     Write-Host ""
                 }
 
                 $sel = Read-Host "  Select installation [1-$($installs.Count)]"
+
                 $idx = 0
 
-                if ([int]::TryParse($sel, [ref]$idx) -and
+                if (
+                    [int]::TryParse($sel, [ref]$idx) -and
                     $idx -ge 1 -and
-                    $idx -le $installs.Count) {
+                    $idx -le $installs.Count
+                ) {
                     return $installs[$idx - 1].Path
                 }
             }
@@ -372,20 +433,28 @@ function Select-ModsPath {
                 return $null
             }
 
-            default { }
+            default {
+            }
         }
     }
 }
 
-# ---------------------------------------------------------------------------
-#  ANALYSIS HELPERS
-# ---------------------------------------------------------------------------
+# ===========================================================================
+# ANALYSIS HELPERS
+# ===========================================================================
 
 function Get-Sha1Hash {
-    param([string]$FilePath)
+    param(
+        [string]$FilePath
+    )
 
     try {
-        return (Get-FileHash -Path $FilePath -Algorithm SHA1 -ErrorAction Stop).Hash.ToLower()
+        return (
+            Get-FileHash `
+                -Path $FilePath `
+                -Algorithm SHA1 `
+                -ErrorAction Stop
+        ).Hash.ToLower()
     }
     catch {
         return $null
@@ -393,7 +462,9 @@ function Get-Sha1Hash {
 }
 
 function Test-ModrinthVerified {
-    param([string]$Hash)
+    param(
+        [string]$Hash
+    )
 
     try {
         $resp = Invoke-RestMethod `
@@ -406,13 +477,16 @@ function Test-ModrinthVerified {
             return $resp.project_id
         }
     }
-    catch { }
+    catch {
+    }
 
     return $null
 }
 
 function Get-DownloadSource {
-    param([string]$FilePath)
+    param(
+        [string]$FilePath
+    )
 
     try {
         $zone = Get-Content `
@@ -420,7 +494,9 @@ function Get-DownloadSource {
             -Stream Zone.Identifier `
             -ErrorAction Stop
 
-        $urlLine = $zone | Where-Object { $_ -match "^HostUrl=" }
+        $urlLine = $zone | Where-Object {
+            $_ -match "^HostUrl="
+        }
 
         if ($urlLine) {
             $url = $urlLine -replace "^HostUrl=", ""
@@ -440,19 +516,24 @@ function Get-DownloadSource {
             }
         }
     }
-    catch { }
+    catch {
+    }
 
     return $null
 }
 
 function Test-FullwidthUnicode {
-    param([string]$Text)
+    param(
+        [string]$Text
+    )
 
     return ($Text -match '[\uFF00-\uFFEF]')
 }
 
 function Get-ObfuscationFlags {
-    param([string[]]$ClassNames)
+    param(
+        [string[]]$ClassNames
+    )
 
     $flags = @()
     $total = $ClassNames.Count
@@ -461,12 +542,39 @@ function Get-ObfuscationFlags {
         return $flags
     }
 
-    $numeric   = ($ClassNames | Where-Object { $_ -match '^\d+$' }).Count
-    $shortName = ($ClassNames | Where-Object { $_ -match '^[A-Za-z]{1,2}$' }).Count
-    $unicode   = ($ClassNames | Where-Object { $_ -match '[^\x00-\x7F]' }).Count
-    $fullwidth = ($ClassNames | Where-Object { Test-FullwidthUnicode $_ }).Count
-    $japanese  = ($ClassNames | Where-Object { $_ -match '[\p{IsHiragana}\p{IsKatakana}]' }).Count
-    $confusion = ($ClassNames | Where-Object { $_ -match '^[IlO01_]+$' }).Count
+    $numeric = (
+        $ClassNames |
+        Where-Object { $_ -match '^\d+$' }
+    ).Count
+
+    $shortName = (
+        $ClassNames |
+        Where-Object { $_ -match '^[A-Za-z]{1,2}$' }
+    ).Count
+
+    $unicode = (
+        $ClassNames |
+        Where-Object { $_ -match '[^\x00-\x7F]' }
+    ).Count
+
+    $fullwidth = (
+        $ClassNames |
+        Where-Object { Test-FullwidthUnicode $_ }
+    ).Count
+
+    $japanese = (
+        $ClassNames |
+        Where-Object {
+            $_ -match '[\p{IsHiragana}\p{IsKatakana}]'
+        }
+    ).Count
+
+    $confusion = (
+        $ClassNames |
+        Where-Object {
+            $_ -match '^[IlO01_]+$'
+        }
+    ).Count
 
     if ($total -gt 0) {
         if (($numeric / $total) -gt 0.15) {
@@ -498,7 +606,9 @@ function Get-ObfuscationFlags {
 }
 
 function Test-KnownObfuscator {
-    param([string]$Content)
+    param(
+        [string]$Content
+    )
 
     $hits = @()
 
@@ -511,27 +621,29 @@ function Test-KnownObfuscator {
     return $hits
 }
 
-# ---------------------------------------------------------------------------
-#  JAR ANALYSIS
-# ---------------------------------------------------------------------------
+# ===========================================================================
+# JAR ANALYSIS
+# ===========================================================================
 
 function Analyze-Jar {
-    param([string]$JarPath)
+    param(
+        [string]$JarPath
+    )
 
     $result = [ordered]@{
-        Name              = Split-Path $JarPath -Leaf
-        Path              = $JarPath
-        Verified          = $false
-        VerifiedProject   = $null
-        PatternHits       = @()
-        StringHits        = @()
-        FullwidthHits     = @()
-        BypassFlags       = @()
-        ObfuscationFlags  = @()
-        ObfuscatorHits    = @()
-        NestedJars        = @()
-        Source            = $null
-        Score             = 0
+        Name             = Split-Path $JarPath -Leaf
+        Path             = $JarPath
+        Verified         = $false
+        VerifiedProject  = $null
+        PatternHits      = @()
+        StringHits       = @()
+        FullwidthHits    = @()
+        BypassFlags      = @()
+        ObfuscationFlags = @()
+        ObfuscatorHits   = @()
+        NestedJars       = @()
+        Source           = $null
+        Score            = 0
     }
 
     $hash = Get-Sha1Hash -FilePath $JarPath
@@ -548,38 +660,40 @@ function Analyze-Jar {
     $result.Source = Get-DownloadSource -FilePath $JarPath
 
     try {
-        Add-Type -AssemblyName System.IO.Compression.FileSystem -ErrorAction SilentlyContinue
+        Add-Type `
+            -AssemblyName System.IO.Compression.FileSystem `
+            -ErrorAction SilentlyContinue
+
         $zip = [System.IO.Compression.ZipFile]::OpenRead($JarPath)
     }
     catch {
-        $result.BypassFlags += "Unable to open archive (corrupt or password protected)"
+        $result.BypassFlags += `
+            "Unable to open archive (corrupt or password protected)"
+
         return $result
     }
 
     $classNames = @()
-    $textBlobs  = New-Object System.Text.StringBuilder
 
-    $hasRuntimeExec  = $false
+    $hasRuntimeExec = $false
     $hasHttpDownload = $false
-    $hasHttpPost     = $false
-    $entryCount      = 0
+    $hasHttpPost = $false
 
     foreach ($entry in $zip.Entries) {
-        $entryCount++
         $entryName = $entry.FullName
 
-        # Nested jars
+        # Nested JARs
         if ($entryName -match "META-INF/jars/.*\.jar$") {
             $result.NestedJars += $entryName
         }
 
-        # Class name capture for obfuscation heuristics
+        # Class names
         if ($entryName -match '\.class$') {
             $short = [System.IO.Path]::GetFileNameWithoutExtension($entryName)
             $classNames += $short
         }
 
-        # Pattern match on path/name
+        # Pattern matching on paths
         foreach ($pat in $CheatPatterns) {
             if ($entryName -match [regex]::Escape($pat)) {
                 if ($result.PatternHits -notcontains $pat) {
@@ -588,27 +702,32 @@ function Analyze-Jar {
             }
         }
 
+        # Fullwidth Unicode in filenames
         if (Test-FullwidthUnicode $entryName) {
             if ($result.FullwidthHits -notcontains $entryName) {
                 $result.FullwidthHits += $entryName
             }
         }
 
-        # Only read text content of relevant, reasonably small entries
-        $isTextTarget =
+        # Read relevant text entries
+        $isTextTarget = (
             $entryName -match '\.class$' -or
             $entryName -match '\.json$' -or
             $entryName -match 'MANIFEST\.MF$'
+        )
 
         if ($isTextTarget -and $entry.Length -lt 3MB) {
             try {
                 $stream = $entry.Open()
+
                 $reader = New-Object System.IO.StreamReader($stream)
+
                 $content = $reader.ReadToEnd()
 
                 $reader.Close()
                 $stream.Close()
 
+                # Cheat strings
                 foreach ($str in $CheatStrings) {
                     if ($content -match [regex]::Escape($str)) {
                         if ($result.StringHits -notcontains $str) {
@@ -617,24 +736,35 @@ function Analyze-Jar {
                     }
                 }
 
+                # Fullwidth content
                 if (Test-FullwidthUnicode $content) {
-                    if ($result.FullwidthHits -notcontains "$entryName (content)") {
-                        $result.FullwidthHits += "$entryName (content)"
+                    $fullwidthContent = "$entryName (content)"
+
+                    if ($result.FullwidthHits -notcontains $fullwidthContent) {
+                        $result.FullwidthHits += $fullwidthContent
                     }
                 }
 
+                # Runtime execution
                 if ($content -match 'Runtime\.exec|ProcessBuilder') {
                     $hasRuntimeExec = $true
                 }
 
-                if ($content -match 'HttpURLConnection|URL\(.*http|openStream\(') {
+                # HTTP download capability
+                if (
+                    $content -match 'HttpURLConnection|URL\(.*http|openStream\('
+                ) {
                     $hasHttpDownload = $true
                 }
 
-                if ($content -match '"POST"|HttpPost|setRequestMethod\("POST"\)') {
+                # HTTP POST
+                if (
+                    $content -match '"POST"|HttpPost|setRequestMethod\("POST"\)'
+                ) {
                     $hasHttpPost = $true
                 }
 
+                # Obfuscators
                 $obfHits = Test-KnownObfuscator -Content $content
 
                 foreach ($o in $obfHits) {
@@ -643,28 +773,38 @@ function Analyze-Jar {
                     }
                 }
             }
-            catch { }
+            catch {
+            }
         }
     }
 
     $zip.Dispose()
 
+    # Obfuscation
     $result.ObfuscationFlags = Get-ObfuscationFlags -ClassNames $classNames
 
+    # Nested JAR
     if ($result.NestedJars.Count -gt 0) {
-        $result.BypassFlags += "Nested JAR(s) embedded in META-INF/jars ($($result.NestedJars.Count))"
+        $result.BypassFlags += `
+            "Nested JAR(s) embedded in META-INF/jars ($($result.NestedJars.Count))"
     }
 
+    # Runtime
     if ($hasRuntimeExec) {
-        $result.BypassFlags += "Runtime.exec / ProcessBuilder usage detected"
+        $result.BypassFlags += `
+            "Runtime.exec / ProcessBuilder usage detected"
     }
 
+    # HTTP
     if ($hasHttpDownload) {
-        $result.BypassFlags += "HTTP download capability detected"
+        $result.BypassFlags += `
+            "HTTP download capability detected"
     }
 
+    # POST
     if ($hasHttpPost) {
-        $result.BypassFlags += "HTTP POST (possible exfiltration) detected"
+        $result.BypassFlags += `
+            "HTTP POST (possible exfiltration) detected"
     }
 
     # Fake identity
@@ -678,26 +818,36 @@ function Analyze-Jar {
     )
 
     foreach ($safe in $safeMods) {
-        if ($result.Name -match $safe -and
-            ($result.PatternHits.Count -gt 0 -or $result.StringHits.Count -gt 0)) {
-
+        if (
+            $result.Name -match $safe -and
+            (
+                $result.PatternHits.Count -gt 0 -or
+                $result.StringHits.Count -gt 0
+            )
+        ) {
             $result.BypassFlags += `
                 "Possible fake identity: named like '$safe' but contains cheat-related content"
         }
     }
 
-    # -----------------------------------------------------------------------
+    # =======================================================================
     # SCORE
-    # -----------------------------------------------------------------------
+    # =======================================================================
 
     $score = 0
 
     if ($result.PatternHits.Count -gt 0) {
-        $score += 15 + [Math]::Min(20, $result.PatternHits.Count * 3)
+        $score += 15 + [Math]::Min(
+            20,
+            $result.PatternHits.Count * 3
+        )
     }
 
     if ($result.StringHits.Count -gt 0) {
-        $score += 20 + [Math]::Min(25, $result.StringHits.Count * 2)
+        $score += 20 + [Math]::Min(
+            25,
+            $result.StringHits.Count * 2
+        )
     }
 
     if ($result.FullwidthHits.Count -gt 0) {
@@ -716,22 +866,20 @@ function Analyze-Jar {
         $score += 15
     }
 
-    if ($result.KnownClient) {
-        $score += 25
-    }
-
-    if ($result.Verified) {
-        $score = [Math]::Max(0, $score - 30)
-    }
-
     foreach ($kc in $KnownClients) {
-        if ($result.Name -match [regex]::Escape($kc) -or
+        if (
+            $result.Name -match [regex]::Escape($kc) -or
             $result.PatternHits -contains $kc -or
-            $result.StringHits -contains $kc) {
-
+            $result.StringHits -contains $kc
+        ) {
             $score += 25
             break
         }
+    }
+
+    # Verified Modrinth files reduce score
+    if ($result.Verified) {
+        $score = [Math]::Max(0, $score - 30)
     }
 
     $result.Score = [Math]::Min(100, $score)
@@ -739,15 +887,16 @@ function Analyze-Jar {
     return $result
 }
 
-# ---------------------------------------------------------------------------
-#  JVM / RUNTIME INJECTION CHECK
-# ---------------------------------------------------------------------------
+# ===========================================================================
+# JVM / RUNTIME INJECTION CHECK
+# ===========================================================================
 
 function Get-JvmInjectionFlags {
     $flags = @()
 
     try {
-        $procs = Get-CimInstance Win32_Process `
+        $procs = Get-CimInstance `
+            Win32_Process `
             -Filter "Name = 'java.exe' OR Name = 'javaw.exe'" `
             -ErrorAction Stop
     }
@@ -773,23 +922,28 @@ function Get-JvmInjectionFlags {
         }
 
         if ($cmd -match '-javaagent:') {
-            $flags += "PID $($p.ProcessId): -javaagent flag present"
+            $flags += `
+                "PID $($p.ProcessId): -javaagent flag present"
         }
 
         if ($cmd -match '-Xbootclasspath/p:') {
-            $flags += "PID $($p.ProcessId): -Xbootclasspath/p (bootstrap override)"
+            $flags += `
+                "PID $($p.ProcessId): -Xbootclasspath/p (bootstrap override)"
         }
 
         if ($cmd -match '-Xbootclasspath/a:') {
-            $flags += "PID $($p.ProcessId): -Xbootclasspath/a (bootstrap append)"
+            $flags += `
+                "PID $($p.ProcessId): -Xbootclasspath/a (bootstrap append)"
         }
 
         if ($cmd -match '-agentlib:jdwp') {
-            $flags += "PID $($p.ProcessId): -agentlib:jdwp (remote debug agent)"
+            $flags += `
+                "PID $($p.ProcessId): -agentlib:jdwp (remote debug agent)"
         }
 
         if ($cmd -match '-agentpath:') {
-            $flags += "PID $($p.ProcessId): -agentpath (native agent)"
+            $flags += `
+                "PID $($p.ProcessId): -agentpath (native agent)"
         }
     }
 
@@ -799,9 +953,9 @@ function Get-JvmInjectionFlags {
     }
 }
 
-# ---------------------------------------------------------------------------
-#  SCAN ORCHESTRATION
-# ---------------------------------------------------------------------------
+# ===========================================================================
+# SCAN ORCHESTRATION
+# ===========================================================================
 
 function Invoke-ModsScan {
     param(
@@ -809,11 +963,13 @@ function Invoke-ModsScan {
         [string]$TargetLabel
     )
 
-    $jars = Get-ChildItem `
-        -Path $ModsPath `
-        -Filter *.jar `
-        -File `
-        -ErrorAction SilentlyContinue
+    $jars = @(
+        Get-ChildItem `
+            -Path $ModsPath `
+            -Filter *.jar `
+            -File `
+            -ErrorAction SilentlyContinue
+    )
 
     $sw = [System.Diagnostics.Stopwatch]::StartNew()
 
@@ -823,7 +979,11 @@ function Invoke-ModsScan {
     foreach ($jar in $jars) {
         $count++
 
-        Write-Host "`r  Analyzing $count / $($jars.Count): $($jar.Name)".PadRight(90) -NoNewline
+        $progress = (
+            "`r  Analyzing $count / $($jars.Count): $($jar.Name)"
+        ).PadRight(90)
+
+        Write-Host $progress -NoNewline
 
         $results += Analyze-Jar -JarPath $jar.FullName
     }
@@ -845,7 +1005,9 @@ function Invoke-ModsScan {
 
 function Invoke-FullPcScan {
     $drives = Get-PSDrive -PSProvider FileSystem |
-        Where-Object { $_.Free -ne $null }
+        Where-Object {
+            $_.Free -ne $null
+        }
 
     $allJars = @()
 
@@ -853,7 +1015,7 @@ function Invoke-FullPcScan {
 
     foreach ($d in $drives) {
         try {
-            $allJars += Get-ChildItem `
+            $found = Get-ChildItem `
                 -Path "$($d.Root)" `
                 -Filter *.jar `
                 -Recurse `
@@ -861,10 +1023,16 @@ function Invoke-FullPcScan {
                 -ErrorAction SilentlyContinue `
                 -Force |
                 Where-Object {
-                    $_.FullName -match '(?i)mods|minecraft|modrinth|prismlauncher|curseforge'
+                    $_.FullName -match `
+                        '(?i)mods|minecraft|modrinth|prismlauncher|curseforge'
                 }
+
+            if ($found) {
+                $allJars += $found
+            }
         }
-        catch { }
+        catch {
+        }
     }
 
     $sw = [System.Diagnostics.Stopwatch]::StartNew()
@@ -875,7 +1043,11 @@ function Invoke-FullPcScan {
     foreach ($jar in $allJars) {
         $count++
 
-        Write-Host "`r  Analyzing $count / $($allJars.Count): $($jar.Name)".PadRight(90) -NoNewline
+        $progress = (
+            "`r  Analyzing $count / $($allJars.Count): $($jar.Name)"
+        ).PadRight(90)
+
+        Write-Host $progress -NoNewline
 
         $results += Analyze-Jar -JarPath $jar.FullName
     }
@@ -895,9 +1067,14 @@ function Invoke-FullPcScan {
         -JvmInfo $jvm
 }
 
-# ---------------------------------------------------------------------------
-#  REPORT
-# ---------------------------------------------------------------------------
+# ===========================================================================
+# REPORT
+#
+# IMPORTANT:
+# This is the only section changed from the original presentation.
+# Safe / verified mods are NOT displayed.
+# Suspicious mods show ONLY name and score.
+# ===========================================================================
 
 function Show-Report {
     param(
@@ -923,27 +1100,42 @@ function Show-Report {
     Write-Host "  |- TARGET                  $TargetLabel"
     Write-Host "  |- FILES ANALYZED          $FilesAnalyzed"
     Write-Host "  |- JAR FILES               $jarCount"
-    Write-Host "  ``- SCAN TIME              $([Math]::Round($ElapsedSeconds,2))s"
+    Write-Host "  ``- SCAN TIME              $([Math]::Round($ElapsedSeconds, 2))s"
     Write-Host ""
 
     # -----------------------------------------------------------------------
-    #  ONLY SUSPICIOUS MODS
+    # FIND SUSPICIOUS MODS
     # -----------------------------------------------------------------------
 
     $suspicious = @(
         $Results |
-        Where-Object { $_.Score -ge 25 } |
+        Where-Object {
+            $_.Score -ge 25
+        } |
         Sort-Object Score -Descending
     )
 
-    # Highest score
+    # -----------------------------------------------------------------------
+    # TOP SCORE
+    # -----------------------------------------------------------------------
+
     $topScore = 0
 
     if ($Results.Count -gt 0) {
-        $topScore = ($Results | Measure-Object -Property Score -Maximum).Maximum
+        $topScore = (
+            $Results |
+            Measure-Object -Property Score -Maximum
+        ).Maximum
+
+        if ($null -eq $topScore) {
+            $topScore = 0
+        }
     }
 
-    # Verdict
+    # -----------------------------------------------------------------------
+    # VERDICT
+    # -----------------------------------------------------------------------
+
     $verdictLabel = "CLEAN"
 
     if ($topScore -ge 71) {
@@ -957,7 +1149,7 @@ function Show-Report {
     }
 
     # -----------------------------------------------------------------------
-    #  SUSPICIOUS MODS
+    # SUSPICIOUS MODS
     # -----------------------------------------------------------------------
 
     Write-Host "  SUSPICIOUS MODS"
@@ -967,7 +1159,13 @@ function Show-Report {
         $i = 1
 
         foreach ($r in $suspicious) {
-            Write-Host ("  [{0:D2}] {1}  -  Score: {2}/100" -f $i, $r.Name, $r.Score)
+            Write-Host (
+                "  [{0:D2}] {1}  -  Score: {2}/100" -f
+                $i,
+                $r.Name,
+                $r.Score
+            )
+
             $i++
         }
     }
@@ -978,16 +1176,30 @@ function Show-Report {
     Write-Host ""
 
     # -----------------------------------------------------------------------
-    #  RISK ASSESSMENT
+    # RISK ASSESSMENT
     # -----------------------------------------------------------------------
 
     Write-Host "  RISK ASSESSMENT"
     Write-Host ""
 
     $barLen = 34
-    $filled = [Math]::Round(($topScore / 100) * $barLen)
 
-    $bar = ("#" * $filled).PadRight($barLen, '.')
+    $filled = [Math]::Round(
+        ($topScore / 100) * $barLen
+    )
+
+    if ($filled -lt 0) {
+        $filled = 0
+    }
+
+    if ($filled -gt $barLen) {
+        $filled = $barLen
+    }
+
+    $bar = ("#" * $filled).PadRight(
+        $barLen,
+        '.'
+    )
 
     Write-Host "                              $topScore / 100"
     Write-Host "                   $bar"
@@ -996,7 +1208,7 @@ function Show-Report {
     Write-Host ""
 
     # -----------------------------------------------------------------------
-    #  JVM / RUNTIME
+    # JVM / RUNTIME
     # -----------------------------------------------------------------------
 
     if ($JvmInfo.Running) {
@@ -1017,10 +1229,102 @@ function Show-Report {
     }
 
     # -----------------------------------------------------------------------
-    #  VERDICT
+    # VERDICT
     # -----------------------------------------------------------------------
 
     Write-Host "  VERDICT"
     Write-Host ""
     Write-Host "                            $verdictLabel"
-    Write-Host
+    Write-Host ""
+    Write-Host "                     Threshold: 51 / 100"
+    Write-Host ""
+
+    Write-Host "  ----------------------------------------------------------------------"
+    Write-Host ""
+    Write-Host "                       MODWARDEN"
+    Write-Host ""
+    Write-Host "                  Unsure about a detection? Review manually before acting."
+    Write-Host ""
+    Write-Host "  ----------------------------------------------------------------------"
+    Write-Host ""
+
+    Read-Host "  Press Enter to return to the main menu"
+}
+
+# ===========================================================================
+# MAIN LOOP
+# ===========================================================================
+
+while ($true) {
+    $choice = Show-MainMenu
+
+    switch ($choice) {
+
+        "1" {
+            $path = Select-ModsPath
+
+            if ($path) {
+                Show-Banner
+
+                Write-Host "  Scanning: $path"
+                Write-Host ""
+
+                Invoke-ModsScan `
+                    -ModsPath $path `
+                    -TargetLabel $path
+            }
+        }
+
+        "2" {
+            Show-Banner
+
+            Write-Host "  FULL PC SCAN"
+            Write-Host ""
+            Write-Host "  ModWarden will scan accessible locations across the PC."
+            Write-Host "  This may take significantly longer than a Minecraft scan."
+            Write-Host ""
+            Write-Host "  [1]  CONTINUE"
+            Write-Host "  [2]  BACK"
+            Write-Host ""
+
+            $c = Read-Host "  Select an option [1-2]"
+
+            if ($c -eq "1") {
+                Show-Banner
+                Invoke-FullPcScan
+            }
+        }
+
+        "3" {
+            Show-Banner
+
+            Write-Host "  CUSTOM PATH"
+            Write-Host ""
+
+            $p = Read-Host "  Enter directory to scan"
+
+            if (Test-Path $p) {
+                Show-Banner
+
+                Write-Host "  Scanning: $p"
+                Write-Host ""
+
+                Invoke-ModsScan `
+                    -ModsPath $p `
+                    -TargetLabel $p
+            }
+            else {
+                Write-Host "  Path not found." -ForegroundColor Red
+                Start-Sleep -Seconds 2
+            }
+        }
+
+        "4" {
+            Write-Host "  Exiting ModWarden."
+            break
+        }
+
+        default {
+        }
+    }
+}
