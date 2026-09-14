@@ -1225,141 +1225,187 @@ function Start-ModWardenGui {
         return
     }
 
-    $bg = [System.Drawing.Color]::FromArgb(10,14,22)
-    $panel = [System.Drawing.Color]::FromArgb(17,23,34)
-    $panel2 = [System.Drawing.Color]::FromArgb(22,29,43)
-    $cyan = [System.Drawing.Color]::FromArgb(70,220,255)
-    $text = [System.Drawing.Color]::FromArgb(235,242,250)
-    $muted = [System.Drawing.Color]::FromArgb(135,150,170)
+    # -----------------------------------------------------------------------
+    # MODWARDEN PRO UI
+    # Responsive layout: everything is docked/anchored so resizing never
+    # leaves the interface floating off-center.
+    # -----------------------------------------------------------------------
+    $bg      = [System.Drawing.Color]::FromArgb(7,10,16)
+    $surface = [System.Drawing.Color]::FromArgb(12,17,26)
+    $card    = [System.Drawing.Color]::FromArgb(16,23,34)
+    $card2   = [System.Drawing.Color]::FromArgb(20,29,43)
+    $line    = [System.Drawing.Color]::FromArgb(38,52,70)
+    $cyan    = [System.Drawing.Color]::FromArgb(70,220,255)
+    $green   = [System.Drawing.Color]::FromArgb(87,230,160)
+    $amber   = [System.Drawing.Color]::FromArgb(255,193,92)
+    $red     = [System.Drawing.Color]::FromArgb(255,92,108)
+    $text    = [System.Drawing.Color]::FromArgb(240,246,252)
+    $muted   = [System.Drawing.Color]::FromArgb(132,149,171)
 
     $form = New-Object System.Windows.Forms.Form
-    $form.Text = "MODWARDEN // Minecraft Forensic Analyzer"
-    $form.StartPosition = "CenterScreen"
-    $form.Size = New-Object System.Drawing.Size(1180,760)
-    $form.MinimumSize = New-Object System.Drawing.Size(980,650)
+    $form.Text = "MODWARDEN  //  Minecraft Forensic Analyzer"
+    $form.StartPosition = 'CenterScreen'
+    $form.ClientSize = New-Object System.Drawing.Size(1280,800)
+    $form.MinimumSize = New-Object System.Drawing.Size(1080,700)
     $form.BackColor = $bg
     $form.ForeColor = $text
-    $form.Font = New-Object System.Drawing.Font("Segoe UI",10)
+    $form.Font = New-Object System.Drawing.Font('Segoe UI',9)
+    $form.AutoScaleMode = 'Dpi'
+    $form.KeyPreview = $true
 
-    $header = New-Object System.Windows.Forms.Panel
-    $header.Dock = "Top"; $header.Height=94; $header.BackColor=$panel
+    function New-Line([System.Windows.Forms.Control]$Parent,[int]$x,[int]$y,[int]$w,[int]$h=1) {
+        $p=New-Object System.Windows.Forms.Panel
+        $p.BackColor=$line; $p.Location=New-Object System.Drawing.Point($x,$y); $p.Size=New-Object System.Drawing.Size($w,$h)
+        $Parent.Controls.Add($p); return $p
+    }
+    function New-Label([System.Windows.Forms.Control]$Parent,[string]$Text,[int]$Size,[System.Drawing.Color]$Color,[int]$X,[int]$Y,[int]$W,[int]$H,[bool]$Bold=$false) {
+        $l=New-Object System.Windows.Forms.Label
+        $l.Text=$Text; $l.ForeColor=$Color; $l.Location=New-Object System.Drawing.Point($X,$Y); $l.Size=New-Object System.Drawing.Size($W,$H)
+        $l.Font=New-Object System.Drawing.Font('Segoe UI',$Size,([System.Drawing.FontStyle]$(if($Bold){'Bold'}else{'Regular'})))
+        $l.AutoEllipsis=$true; $l.TextAlign='MiddleLeft'; $Parent.Controls.Add($l); return $l
+    }
+    function New-ActionButton([System.Windows.Forms.Control]$Parent,[string]$Text,[System.Drawing.Color]$Accent) {
+        $b=New-Object System.Windows.Forms.Button
+        $b.Text=$Text; $b.Size=New-Object System.Drawing.Size(245,50); $b.Margin=New-Object System.Windows.Forms.Padding(0,0,0,9)
+        $b.FlatStyle='Flat'; $b.FlatAppearance.BorderSize=1; $b.FlatAppearance.BorderColor=$line
+        $b.BackColor=$card2; $b.ForeColor=$text
+        $b.Font=New-Object System.Drawing.Font('Segoe UI Semibold',9.5,[System.Drawing.FontStyle]::Bold)
+        $b.TextAlign='MiddleLeft'; $b.Padding=New-Object System.Windows.Forms.Padding(18,0,8,0)
+        $b.Cursor=[System.Windows.Forms.Cursors]::Hand
+        $b.FlatAppearance.MouseOverBackColor=[System.Drawing.Color]::FromArgb(28,40,57)
+        $b.FlatAppearance.MouseDownBackColor=[System.Drawing.Color]::FromArgb(34,48,68)
+        $b.Tag=$Accent
+        $Parent.Controls.Add($b)
+        return $b
+    }
+
+    # Header ----------------------------------------------------------------
+    $header=New-Object System.Windows.Forms.Panel
+    $header.Dock='Top'; $header.Height=92; $header.BackColor=$surface; $header.Padding=New-Object System.Windows.Forms.Padding(28,0,28,0)
     $form.Controls.Add($header)
 
-    $brand = New-Object System.Windows.Forms.Label
-    $brand.Text = "◈  M O D W A R D E N"; $brand.Font=New-Object System.Drawing.Font("Segoe UI Semibold",22,[System.Drawing.FontStyle]::Bold)
-    $brand.ForeColor=$cyan; $brand.AutoSize=$true; $brand.Location=New-Object System.Drawing.Point(28,18)
-    $header.Controls.Add($brand)
+    $brand=New-Label $header '◈  M O D W A R D E N' 21 $cyan 28 14 500 34 $true
+    $sub=New-Label $header 'MINECRAFT FORENSIC ANALYZER   /   STATIC MOD INTELLIGENCE' 8.5 $muted 31 51 700 22
+    $status=New-Label $header '●  READY' 9.5 $green 0 29 180 30 $true
+    $status.Anchor='Top,Right'; $status.TextAlign='MiddleRight'
 
-    $subtitle = New-Object System.Windows.Forms.Label
-    $subtitle.Text = "MINECRAFT FORENSIC ANALYZER   /   STATIC MOD INTELLIGENCE"; $subtitle.ForeColor=$muted; $subtitle.AutoSize=$true; $subtitle.Location=New-Object System.Drawing.Point(31,58)
-    $header.Controls.Add($subtitle)
+    $headerLine=New-Line $header 0 91 1 1
+    $header.Add_Resize({$headerLine.Width=$header.ClientSize.Width})
 
-    $status = New-Object System.Windows.Forms.Label
-    $status.Text = "●  READY"; $status.ForeColor=[System.Drawing.Color]::FromArgb(90,220,150); $status.Font=New-Object System.Drawing.Font("Segoe UI Semibold",10,[System.Drawing.FontStyle]::Bold); $status.AutoSize=$true; $status.Anchor="Top,Right"; $status.Location=New-Object System.Drawing.Point(1010,38)
-    $header.Controls.Add($status)
+    # Main shell -------------------------------------------------------------
+    $shell=New-Object System.Windows.Forms.Panel
+    $shell.Dock='Fill'; $shell.BackColor=$bg; $form.Controls.Add($shell)
 
-    $left = New-Object System.Windows.Forms.Panel
-    $left.Dock="Left"; $left.Width=315; $left.BackColor=$panel
-    $form.Controls.Add($left)
+    # Left rail: fixed, clean and balanced.
+    $rail=New-Object System.Windows.Forms.Panel
+    $rail.Dock='Left'; $rail.Width=285; $rail.BackColor=$surface; $rail.Padding=New-Object System.Windows.Forms.Padding(20,22,20,20)
+    $shell.Controls.Add($rail)
 
-    function New-GuiButton {
-        param($Parent,[string]$Caption,[int]$Y,[System.Drawing.Color]$Accent=$cyan)
-        $b=New-Object System.Windows.Forms.Button
-        $b.Text=$Caption; $b.Location=New-Object System.Drawing.Point(22,$Y); $b.Size=New-Object System.Drawing.Size(270,48)
-        $b.FlatStyle="Flat"; $b.FlatAppearance.BorderSize=1; $b.FlatAppearance.BorderColor=[System.Drawing.Color]::FromArgb(48,65,88)
-        $b.BackColor=$panel2; $b.ForeColor=$text; $b.Font=New-Object System.Drawing.Font("Segoe UI Semibold",10,[System.Drawing.FontStyle]::Bold)
-        $b.Cursor=[System.Windows.Forms.Cursors]::Hand
-        $b.FlatAppearance.MouseOverBackColor=[System.Drawing.Color]::FromArgb(30,43,62)
-        $Parent.Controls.Add($b); return $b
-    }
-
-    $scanTitle=New-Object System.Windows.Forms.Label; $scanTitle.Text="OPERATIONS"; $scanTitle.ForeColor=$muted; $scanTitle.AutoSize=$true; $scanTitle.Location=New-Object System.Drawing.Point(24,22); $left.Controls.Add($scanTitle)
-    $btnMinecraft=New-GuiButton $left "▣   MINECRAFT SCAN" 55
-    $btnFull=New-GuiButton $left "◉   FULL PC SCAN" 112
-    $btnCustom=New-GuiButton $left "⌁   CUSTOM PATH" 169
-    $btnOpen=New-GuiButton $left "↗   OPEN LAST FOLDER" 226
+    $ops=New-Label $rail 'OPERATIONS' 8 $muted 20 22 240 22 $true
+    $btnMinecraft=New-ActionButton $rail '▣   MINECRAFT SCAN' $cyan
+    $btnFull=New-ActionButton $rail '◉   FULL PC SCAN' $cyan
+    $btnCustom=New-ActionButton $rail '⌁   CUSTOM PATH' $cyan
+    $btnOpen=New-ActionButton $rail '↗   OPEN LAST FOLDER' $cyan
     $btnOpen.Enabled=$false
+    $btnMinecraft.Location=New-Object System.Drawing.Point(20,54); $btnFull.Location=New-Object System.Drawing.Point(20,113); $btnCustom.Location=New-Object System.Drawing.Point(20,172); $btnOpen.Location=New-Object System.Drawing.Point(20,231)
 
-    $utilTitle=New-Object System.Windows.Forms.Label; $utilTitle.Text="REPORT TOOLS"; $utilTitle.ForeColor=$muted; $utilTitle.AutoSize=$true; $utilTitle.Location=New-Object System.Drawing.Point(24,310); $left.Controls.Add($utilTitle)
-    $btnCopy=New-GuiButton $left "⧉   COPY REPORT" 342
-    $btnCopy.Enabled=$false
-    $btnCommand=New-GuiButton $left "⧉   COPY LAUNCH COMMAND" 399
-    $btnExit=New-GuiButton $left "×   EXIT" 456
+    $railLine=New-Line $rail 20 300 245 1
+    $tools=New-Label $rail 'REPORT TOOLS' 8 $muted 20 316 240 22 $true
+    $btnCopy=New-ActionButton $rail '⧉   COPY REPORT' $cyan; $btnCopy.Enabled=$false; $btnCopy.Location=New-Object System.Drawing.Point(20,348)
+    $btnCommand=New-ActionButton $rail '⧉   COPY LAUNCH COMMAND' $cyan; $btnCommand.Location=New-Object System.Drawing.Point(20,407)
+    $btnExit=New-ActionButton $rail '×   EXIT' $red; $btnExit.Location=New-Object System.Drawing.Point(20,466)
+    $note=New-Label $rail "STATIC ANALYSIS ONLY`r`nReview evidence before moderation." 8.2 $muted 20 535 245 48 $false
 
-    $note=New-Object System.Windows.Forms.Label; $note.Text="Static analysis only.
-Review detections before moderation."; $note.ForeColor=$muted; $note.AutoSize=$true; $note.Location=New-Object System.Drawing.Point(24,535); $left.Controls.Add($note)
+    # Content area -----------------------------------------------------------
+    $content=New-Object System.Windows.Forms.Panel
+    $content.Dock='Fill'; $content.BackColor=$bg; $content.Padding=New-Object System.Windows.Forms.Padding(28,24,28,24)
+    $shell.Controls.Add($content)
 
-    $main=New-Object System.Windows.Forms.Panel
-    $main.Dock="Fill"; $main.BackColor=$bg; $form.Controls.Add($main)
+    $title=New-Label $content 'COMMAND CENTER' 16 $text 28 22 500 34 $true
+    $targetLabel=New-Label $content 'NO TARGET SELECTED' 8 $muted 28 53 600 20 $true
 
-    $title=New-Object System.Windows.Forms.Label
-    $title.Text="COMMAND CENTER"; $title.Font=New-Object System.Drawing.Font("Segoe UI Semibold",16,[System.Drawing.FontStyle]::Bold); $title.ForeColor=$text; $title.AutoSize=$true; $title.Location=New-Object System.Drawing.Point(25,20); $main.Controls.Add($title)
-
-    $stats=New-Object System.Windows.Forms.Panel; $stats.Location=New-Object System.Drawing.Point(25,58); $stats.Size=New-Object System.Drawing.Size(810,82); $stats.BackColor=$panel
-    $main.Controls.Add($stats)
+    # Stat cards in a TableLayoutPanel keep them perfectly aligned at every size.
+    $stats=New-Object System.Windows.Forms.TableLayoutPanel
+    $stats.Location=New-Object System.Drawing.Point(28,82); $stats.Size=New-Object System.Drawing.Size(1,82); $stats.Anchor='Top,Left,Right'
+    $stats.ColumnCount=4; $stats.RowCount=1; $stats.BackColor=$bg; $stats.Padding=New-Object System.Windows.Forms.Padding(0)
+    for($i=0;$i -lt 4;$i++){[void]$stats.ColumnStyles.Add((New-Object System.Windows.Forms.ColumnStyle([System.Windows.Forms.SizeType]::Percent,25)))}
+    $content.Controls.Add($stats)
     $statLabels=@()
-    $names=@("JARS","FILES","TOP SCORE","VERDICT")
+    $names=@('JARS ANALYZED','FILES','TOP SCORE','VERDICT')
     for($i=0;$i -lt 4;$i++){
-        $x=18+($i*198)
-        $l=New-Object System.Windows.Forms.Label; $l.Text=$names[$i]; $l.ForeColor=$muted; $l.AutoSize=$true; $l.Location=New-Object System.Drawing.Point($x,13); $stats.Controls.Add($l)
-        $v=New-Object System.Windows.Forms.Label; $v.Text="—"; $v.Font=New-Object System.Drawing.Font("Segoe UI Semibold",14,[System.Drawing.FontStyle]::Bold); $v.ForeColor=$text; $v.AutoSize=$true; $v.Location=New-Object System.Drawing.Point($x,37); $stats.Controls.Add($v); $statLabels += $v
+        $cardPanel=New-Object System.Windows.Forms.Panel
+        $cardPanel.Dock='Fill'; $cardPanel.BackColor=$card; $cardPanel.Margin=New-Object System.Windows.Forms.Padding($(if($i -eq 0){0}else{5}),0,5,0)
+        [void]$stats.Controls.Add($cardPanel,$i,0)
+        $l=New-Label $cardPanel $names[$i] 7.5 $muted 15 10 220 20 $true
+        $v=New-Label $cardPanel '—' 14 $text 15 31 230 38 $true
+        $statLabels += $v
     }
 
+    # Report area is the main visual anchor and expands with the window.
     $report=New-Object System.Windows.Forms.RichTextBox
-    $report.Location=New-Object System.Drawing.Point(25,158); $report.Size=New-Object System.Drawing.Size(810,535); $report.Anchor="Top,Bottom,Left,Right"
-    $report.BackColor=[System.Drawing.Color]::FromArgb(8,12,19); $report.ForeColor=$text; $report.BorderStyle="None"; $report.Font=New-Object System.Drawing.Font("Consolas",10); $report.ReadOnly=$true; $report.WordWrap=$false
-    $report.Text="MODWARDEN READY`r`n`r`nChoose an operation from the left.`r`n`r`nMINECRAFT SCAN     Find and scan a Minecraft instance.`r`nFULL PC SCAN       Search known launcher locations.`r`nCUSTOM PATH        Scan any directory containing JAR files.`r`n`r`nReports can be copied with one click."
-    $main.Controls.Add($report)
+    $report.Location=New-Object System.Drawing.Point(28,180); $report.Size=New-Object System.Drawing.Size(1,1); $report.Anchor='Top,Bottom,Left,Right'
+    $report.BackColor=[System.Drawing.Color]::FromArgb(5,8,13); $report.ForeColor=$text; $report.BorderStyle='FixedSingle'; $report.Font=New-Object System.Drawing.Font('Consolas',9.5)
+    $report.ReadOnly=$true; $report.WordWrap=$false; $report.DetectUrls=$false; $report.Padding=New-Object System.Windows.Forms.Padding(14,14,14,14)
+    $report.Text="MODWARDEN // READY`r`n`r`nSelect an operation to begin.`r`n`r`nThe scan is static: JARs are inspected, never executed."
+    $content.Controls.Add($report)
 
-    # Live scan overlay: stays inside the application and is driven by the
-    # GUI-aware runspace poller. The cancel button stops outstanding jobs.
-    $scanPanel=New-Object System.Windows.Forms.Panel
-    $scanPanel.Location=New-Object System.Drawing.Point(55,205); $scanPanel.Size=New-Object System.Drawing.Size(750,385)
-    $scanPanel.BackColor=[System.Drawing.Color]::FromArgb(13,19,29); $scanPanel.BorderStyle='FixedSingle'; $scanPanel.Visible=$false; $scanPanel.BringToFront()
-    $main.Controls.Add($scanPanel)
+    # Live scan overlay. It is centered by a layout panel instead of hard-coded
+    # coordinates, so it remains centered after resizing.
+    $scanOverlay=New-Object System.Windows.Forms.Panel
+    $scanOverlay.BackColor=[System.Drawing.Color]::FromArgb(248,10,14,22)
+    $scanOverlay.Visible=$false; $scanOverlay.Anchor='Top,Bottom,Left,Right'; $content.Controls.Add($scanOverlay)
 
-    $scanHeader=New-Object System.Windows.Forms.Label
-    $scanHeader.Text='LIVE FORENSIC SCAN'; $scanHeader.Font=New-Object System.Drawing.Font('Segoe UI Semibold',18,[System.Drawing.FontStyle]::Bold); $scanHeader.ForeColor=$cyan; $scanHeader.AutoSize=$true; $scanHeader.Location=New-Object System.Drawing.Point(28,24); $scanPanel.Controls.Add($scanHeader)
-    $scanPhase=New-Object System.Windows.Forms.Label
-    $scanPhase.Text='ANALYZING JAR ARCHIVE'; $scanPhase.Font=New-Object System.Drawing.Font('Consolas',9,[System.Drawing.FontStyle]::Bold); $scanPhase.ForeColor=$muted; $scanPhase.AutoSize=$true; $scanPhase.Location=New-Object System.Drawing.Point(30,59); $scanPanel.Controls.Add($scanPhase)
+    $scanCard=New-Object System.Windows.Forms.Panel
+    $scanCard.BackColor=$surface; $scanCard.BorderStyle='FixedSingle'; $scanCard.Size=New-Object System.Drawing.Size(720,390)
+    $scanCard.Anchor='None'; $scanOverlay.Controls.Add($scanCard)
 
-    $scanCurrentCaption=New-Object System.Windows.Forms.Label
-    $scanCurrentCaption.Text='CURRENT FILE'; $scanCurrentCaption.ForeColor=$muted; $scanCurrentCaption.AutoSize=$true; $scanCurrentCaption.Location=New-Object System.Drawing.Point(30,103); $scanPanel.Controls.Add($scanCurrentCaption)
-    $scanCurrent=New-Object System.Windows.Forms.Label
-    $scanCurrent.Text='Preparing...'; $scanCurrent.ForeColor=$text; $scanCurrent.Font=New-Object System.Drawing.Font('Consolas',10,[System.Drawing.FontStyle]::Bold); $scanCurrent.AutoSize=$false; $scanCurrent.Size=New-Object System.Drawing.Size(690,40); $scanCurrent.Location=New-Object System.Drawing.Point(30,124); $scanPanel.Controls.Add($scanCurrent)
+    $scanIcon=New-Label $scanCard '◈' 25 $cyan 34 24 55 45 $true
+    $scanHeader=New-Label $scanCard 'LIVE FORENSIC SCAN' 15 $text 92 25 550 32 $true
+    $scanPhase=New-Label $scanCard 'INITIALIZING ANALYSIS ENGINE' 8 $muted 94 57 540 22 $true
+    $scanCurrentCaption=New-Label $scanCard 'CURRENT FILE' 7.5 $muted 36 100 640 20 $true
+    $scanCurrent=New-Label $scanCard 'Preparing scan queue...' 9.5 $text 36 121 640 34 $true
+    $scanCurrent.Font=New-Object System.Drawing.Font('Consolas',9.5,[System.Drawing.FontStyle]::Bold)
 
     $scanProgress=New-Object System.Windows.Forms.ProgressBar
-    $scanProgress.Location=New-Object System.Drawing.Point(30,183); $scanProgress.Size=New-Object System.Drawing.Size(690,24); $scanProgress.Minimum=0; $scanProgress.Maximum=100; $scanProgress.Style='Continuous'; $scanPanel.Controls.Add($scanProgress)
-    $scanPercent=New-Object System.Windows.Forms.Label
-    $scanPercent.Text='0%'; $scanPercent.Font=New-Object System.Drawing.Font('Segoe UI Semibold',20,[System.Drawing.FontStyle]::Bold); $scanPercent.ForeColor=$text; $scanPercent.AutoSize=$true; $scanPercent.Location=New-Object System.Drawing.Point(30,218); $scanPanel.Controls.Add($scanPercent)
-    $scanCount=New-Object System.Windows.Forms.Label
-    $scanCount.Text='0 / 0 FILES'; $scanCount.ForeColor=$muted; $scanCount.AutoSize=$true; $scanCount.Location=New-Object System.Drawing.Point(112,230); $scanPanel.Controls.Add($scanCount)
-    $scanDetections=New-Object System.Windows.Forms.Label
-    $scanDetections.Text='0 DETECTIONS'; $scanDetections.Font=New-Object System.Drawing.Font('Segoe UI Semibold',10,[System.Drawing.FontStyle]::Bold); $scanDetections.ForeColor=$cyan; $scanDetections.AutoSize=$true; $scanDetections.Location=New-Object System.Drawing.Point(30,272); $scanPanel.Controls.Add($scanDetections)
-    $scanHint=New-Object System.Windows.Forms.Label
-    $scanHint.Text='Static analysis • 8 parallel workers • cancel is safe and leaves scanned JARs untouched'; $scanHint.ForeColor=$muted; $scanHint.AutoSize=$true; $scanHint.Location=New-Object System.Drawing.Point(30,301); $scanPanel.Controls.Add($scanHint)
+    $scanProgress.Location=New-Object System.Drawing.Point(36,174); $scanProgress.Size=New-Object System.Drawing.Size(648,22); $scanProgress.Minimum=0; $scanProgress.Maximum=100; $scanProgress.Style='Continuous'; $scanCard.Controls.Add($scanProgress)
+    $scanPercent=New-Label $scanCard '0%' 20 $text 36 208 120 42 $true
+    $scanCount=New-Label $scanCard '0 / 0 FILES' 8.5 $muted 156 218 200 25 $true
+    $scanDetections=New-Label $scanCard '0 DETECTIONS' 9.5 $cyan 36 265 260 28 $true
+    $scanWorker=New-Label $scanCard '8 PARALLEL ANALYSIS WORKERS' 8 $muted 36 291 330 22 $true
+
     $btnCancel=New-Object System.Windows.Forms.Button
-    $btnCancel.Text='■   CANCEL SCAN'; $btnCancel.Location=New-Object System.Drawing.Point(500,275); $btnCancel.Size=New-Object System.Drawing.Size(220,52); $btnCancel.FlatStyle='Flat'; $btnCancel.FlatAppearance.BorderSize=1; $btnCancel.FlatAppearance.BorderColor=[System.Drawing.Color]::FromArgb(120,60,70); $btnCancel.BackColor=[System.Drawing.Color]::FromArgb(45,25,32); $btnCancel.ForeColor=[System.Drawing.Color]::FromArgb(255,110,120); $btnCancel.Font=New-Object System.Drawing.Font('Segoe UI Semibold',10,[System.Drawing.FontStyle]::Bold); $btnCancel.Cursor=[System.Windows.Forms.Cursors]::Hand; $scanPanel.Controls.Add($btnCancel)
+    $btnCancel.Text='■   CANCEL SCAN'; $btnCancel.Location=New-Object System.Drawing.Point(464,257); $btnCancel.Size=New-Object System.Drawing.Size(220,55)
+    $btnCancel.FlatStyle='Flat'; $btnCancel.FlatAppearance.BorderSize=1; $btnCancel.FlatAppearance.BorderColor=[System.Drawing.Color]::FromArgb(120,55,68)
+    $btnCancel.BackColor=[System.Drawing.Color]::FromArgb(43,23,30); $btnCancel.ForeColor=$red; $btnCancel.Font=New-Object System.Drawing.Font('Segoe UI Semibold',9.5,[System.Drawing.FontStyle]::Bold); $btnCancel.Cursor=[System.Windows.Forms.Cursors]::Hand
+    $btnCancel.FlatAppearance.MouseOverBackColor=[System.Drawing.Color]::FromArgb(65,28,38); $scanCard.Controls.Add($btnCancel)
+    $scanHint=New-Label $scanCard 'Cancel is safe. Scanned JARs are never modified.' 7.8 $muted 36 333 648 22 $false
+
+    # Keep the overlay/card geometrically centered whenever the content changes.
+    $centerScan={
+        $scanOverlay.Location=New-Object System.Drawing.Point(0,0); $scanOverlay.Size=$content.ClientSize
+        $scanCard.Left=[Math]::Max(0,[int](($scanOverlay.ClientSize.Width-$scanCard.Width)/2))
+        $scanCard.Top=[Math]::Max(0,[int](($scanOverlay.ClientSize.Height-$scanCard.Height)/2))
+    }
+    $content.Add_Resize($centerScan)
 
     $script:GuiScanCancelled=$false
-    $script:GuiLastReport=""; $script:GuiLastPath=$null
+    $script:GuiLastReport=''; $script:GuiLastPath=$null
 
     function Set-GuiBusy([bool]$Busy,[string]$Message){
-        $btnMinecraft.Enabled=-not $Busy; $btnFull.Enabled=-not $Busy; $btnCustom.Enabled=-not $Busy; $btnCommand.Enabled=-not $Busy; $btnCopy.Enabled=(-not $Busy -and [bool]$script:GuiLastReport); $btnOpen.Enabled=(-not $Busy -and [bool]$script:GuiLastPath)
-        $btnExit.Enabled=-not $Busy
-        $btnCancel.Enabled=$Busy
-        $status.Text=if($Busy){"●  SCANNING"}else{"●  READY"}; $status.ForeColor=if($Busy){[System.Drawing.Color]::FromArgb(255,190,80)}else{[System.Drawing.Color]::FromArgb(90,220,150)}
-        $scanPanel.Visible=$Busy
-        if($Busy){$scanPanel.BringToFront();$report.Visible=$false}else{$report.Visible=$true}
+        $btnMinecraft.Enabled=-not $Busy; $btnFull.Enabled=-not $Busy; $btnCustom.Enabled=-not $Busy
+        $btnCommand.Enabled=-not $Busy; $btnCopy.Enabled=(-not $Busy -and [bool]$script:GuiLastReport); $btnOpen.Enabled=(-not $Busy -and [bool]$script:GuiLastPath)
+        $btnExit.Enabled=-not $Busy; $btnCancel.Enabled=$Busy
+        $status.Text=if($Busy){'●  SCANNING'}else{'●  READY'}
+        $status.ForeColor=if($Busy){$amber}else{$green}
+        $scanOverlay.Visible=$Busy
+        if($Busy){& $centerScan;$scanOverlay.BringToFront();$scanCard.BringToFront();$report.Visible=$false}else{$report.Visible=$true;$report.BringToFront()}
         if($Message){$report.Text=$Message;$report.SelectionStart=0;$report.SelectionLength=0}
         [System.Windows.Forms.Application]::DoEvents()
     }
 
     function Update-GuiScanProgress([int]$Completed,[int]$Total,[string]$Current,[int]$Detections){
         if($Total -le 0){$pct=0}else{$pct=[Math]::Min(100,[Math]::Max(0,[int](($Completed*100.0)/$Total)))}
-        $scanProgress.Value=$pct
-        $scanPercent.Text="$pct%"
-        $scanCount.Text="$Completed / $Total FILES"
+        $scanProgress.Value=$pct; $scanPercent.Text="$pct%"; $scanCount.Text="$Completed / $Total FILES"
         $scanDetections.Text="$Detections DETECTION$(if($Detections -eq 1){''}else{'S'})"
         $scanCurrent.Text=if($Current){$Current}else{'Preparing scan queue...'}
         $status.Text="●  SCANNING  $pct%"
@@ -1367,60 +1413,75 @@ Review detections before moderation."; $note.ForeColor=$muted; $note.AutoSize=$t
     }
 
     $btnCancel.Add_Click({
-        $script:GuiScanCancelled=$true
-        $btnCancel.Enabled=$false
-        $scanPhase.Text='CANCELLING — FINISHING SAFE CLEANUP'
-        $scanCurrent.Text='Stopping active analysis workers...'
-        $status.Text='■  CANCELLING'
-        $status.ForeColor=[System.Drawing.Color]::FromArgb(255,110,120)
+        $script:GuiScanCancelled=$true; $btnCancel.Enabled=$false
+        $scanPhase.Text='CANCELLING  /  SAFE WORKER SHUTDOWN'; $scanCurrent.Text='Stopping active analysis workers...'
+        $status.Text='■  CANCELLING'; $status.ForeColor=$red
         [System.Windows.Forms.Application]::DoEvents()
     })
 
     function Show-GuiResult($scan){
         $script:GuiLastReport=Build-GuiReportText -Results $scan.Results -TargetLabel $scan.Target -FilesAnalyzed $scan.Files -ElapsedSeconds $scan.Seconds -Mode $scan.Mode -JvmInfo $scan.JVM
-        $script:GuiLastPath=$scan.Path
-        $report.Text=$script:GuiLastReport
-        $report.SelectionStart=0; $report.SelectionLength=0
-        $sorted=@($scan.Results|Sort-Object @{Expression={[int]$_.Score};Descending=$true})
-        $top=if($sorted.Count){[int]$sorted[0].Score}else{0}
-        $statLabels[0].Text=$sorted.Count
-        $statLabels[1].Text=$scan.Files
-        $statLabels[2].Text="$top / 100"
-        $statLabels[2].ForeColor=Get-GuiVerdictColor $top
-        $statLabels[3].Text=Get-GuiVerdict $top
-        $statLabels[3].ForeColor=Get-GuiVerdictColor $top
+        $script:GuiLastPath=$scan.Path; $report.Text=$script:GuiLastReport; $report.SelectionStart=0; $report.SelectionLength=0
+        $sorted=@($scan.Results|Sort-Object @{Expression={[int]$_.Score};Descending=$true}); $top=if($sorted.Count){[int]$sorted[0].Score}else{0}
+        $statLabels[0].Text=$sorted.Count; $statLabels[1].Text=$scan.Files; $statLabels[2].Text="$top / 100"; $statLabels[2].ForeColor=Get-GuiVerdictColor $top
+        $statLabels[3].Text=Get-GuiVerdict $top; $statLabels[3].ForeColor=Get-GuiVerdictColor $top
+        $targetLabel.Text=($scan.Target.ToUpperInvariant())
         $btnCopy.Enabled=$true; $btnOpen.Enabled=[bool]$script:GuiLastPath
+    }
+
+    function Run-GuiScan([string]$Mode,[string]$Path=$null){
+        $script:GuiScanCancelled=$false
+        $scanProgress.Value=0; $scanPercent.Text='0%'; $scanCount.Text='0 / 0 FILES'; $scanDetections.Text='0 DETECTIONS'; $scanCurrent.Text='Preparing scan queue...'
+        $scanPhase.Text="$Mode SCAN  /  INITIALIZING"
+        Set-GuiBusy $true ''
+        try {
+            if($Mode -eq 'MINECRAFT'){$scan=Invoke-GuiJarScan $Path $Path 'MINECRAFT' ${function:Update-GuiScanProgress} { return $script:GuiScanCancelled }}
+            elseif($Mode -eq 'CUSTOM'){$scan=Invoke-GuiJarScan $Path $Path 'CUSTOM' ${function:Update-GuiScanProgress} { return $script:GuiScanCancelled }}
+            else {$scan=Invoke-GuiFullPcScan ${function:Update-GuiScanProgress} { return $script:GuiScanCancelled }}
+            if($script:GuiScanCancelled){
+                $scanPhase.Text='SCAN CANCELLED'; $scanCurrent.Text='No final report generated.'
+                $report.Text="MODWARDEN // SCAN CANCELLED`r`n`r`nThe scan was stopped safely.`r`nNo scanned JAR was modified."
+                $report.SelectionStart=0; $report.SelectionLength=0
+            } else { Show-GuiResult $scan }
+        } catch { [System.Windows.Forms.MessageBox]::Show($_.Exception.Message,'ModWarden — Scan Error','OK','Error') | Out-Null }
+        finally { Set-GuiBusy $false '' }
     }
 
     $btnMinecraft.Add_Click({
         $installs=@(Find-MinecraftInstallations)
-        if($installs.Count -eq 0){[System.Windows.Forms.MessageBox]::Show("No Minecraft installations were found.","ModWarden",'OK','Information');return}
-        $dlg=New-Object System.Windows.Forms.Form; $dlg.Text="Select Minecraft Instance"; $dlg.Size=New-Object System.Drawing.Size(650,430); $dlg.StartPosition="CenterParent"; $dlg.BackColor=$bg; $dlg.ForeColor=$text
-        $list=New-Object System.Windows.Forms.ListBox; $list.Location=New-Object System.Drawing.Point(20,20); $list.Size=New-Object System.Drawing.Size(590,280); $list.BackColor=$panel2; $list.ForeColor=$text; $list.BorderStyle="FixedSingle"
-        foreach($inst in $installs){[void]$list.Items.Add("$($inst.Name)  —  $($inst.Path)")}
-        $dlg.Controls.Add($list)
-        $go=New-Object System.Windows.Forms.Button; $go.Text="SCAN SELECTED"; $go.Location=New-Object System.Drawing.Point(390,320); $go.Size=New-Object System.Drawing.Size(220,45); $go.BackColor=$panel2; $go.ForeColor=$cyan; $go.FlatStyle='Flat'; $dlg.Controls.Add($go)
+        if($installs.Count -eq 0){[System.Windows.Forms.MessageBox]::Show('No Minecraft installations were found.','ModWarden','OK','Information')|Out-Null;return}
+        $dlg=New-Object System.Windows.Forms.Form; $dlg.Text='MODWARDEN  //  SELECT INSTANCE'; $dlg.ClientSize=New-Object System.Drawing.Size(720,450); $dlg.StartPosition='CenterParent'; $dlg.BackColor=$bg; $dlg.ForeColor=$text; $dlg.Font=New-Object System.Drawing.Font('Segoe UI',9); $dlg.MinimizeBox=$false; $dlg.MaximizeBox=$false
+        $dl=New-Label $dlg 'SELECT MINECRAFT INSTANCE' 14 $text 24 22 620 34 $true
+        $list=New-Object System.Windows.Forms.ListBox; $list.Location=New-Object System.Drawing.Point(24,68); $list.Size=New-Object System.Drawing.Size(672,275); $list.BackColor=$card; $list.ForeColor=$text; $list.BorderStyle='FixedSingle'; $list.Font=New-Object System.Drawing.Font('Consolas',9); $dlg.Controls.Add($list)
+        foreach($inst in $installs){[void]$list.Items.Add("$($inst.Name)  —  $($inst.Path)")}; if($list.Items.Count -gt 0){$list.SelectedIndex=0}
+        $go=New-Object System.Windows.Forms.Button; $go.Text='SCAN SELECTED  →'; $go.Location=New-Object System.Drawing.Point(476,370); $go.Size=New-Object System.Drawing.Size(220,48); $go.FlatStyle='Flat'; $go.FlatAppearance.BorderSize=1; $go.FlatAppearance.BorderColor=$cyan; $go.BackColor=$card2; $go.ForeColor=$cyan; $go.Font=New-Object System.Drawing.Font('Segoe UI Semibold',9,[System.Drawing.FontStyle]::Bold); $go.Cursor=[System.Windows.Forms.Cursors]::Hand; $dlg.Controls.Add($go)
         $go.Add_Click({if($list.SelectedIndex -ge 0){$dlg.Tag=$installs[$list.SelectedIndex].Path;$dlg.DialogResult='OK';$dlg.Close()}})
-        if($dlg.ShowDialog($form) -eq 'OK'){$path=[string]$dlg.Tag; $script:GuiScanCancelled=$false; Set-GuiBusy $true ""; $scanPhase.Text='MINECRAFT SCAN  /  INITIALIZING'; try{$scan=Invoke-GuiJarScan $path $path 'MINECRAFT' ${function:Update-GuiScanProgress} { return $script:GuiScanCancelled }; if($script:GuiScanCancelled){$scanPhase.Text='SCAN CANCELLED';$scanCurrent.Text='No final report generated.';Start-Sleep -Milliseconds 350}else{Show-GuiResult $scan}}catch{[System.Windows.Forms.MessageBox]::Show($_.Exception.Message,'Scan Error','OK','Error')}finally{Set-GuiBusy $false ''}}
+        if($dlg.ShowDialog($form) -eq 'OK'){Run-GuiScan 'MINECRAFT' ([string]$dlg.Tag)}
     })
-
     $btnFull.Add_Click({
-        $answer=[System.Windows.Forms.MessageBox]::Show("Search known Minecraft, launcher and Downloads locations?","Full PC Scan",'YesNo','Question')
-        if($answer -ne 'Yes'){return}
-        $script:GuiScanCancelled=$false; Set-GuiBusy $true ""; $scanPhase.Text='FULL PC SCAN  /  INITIALIZING'; try{$scan=Invoke-GuiFullPcScan ${function:Update-GuiScanProgress} { return $script:GuiScanCancelled }; if($script:GuiScanCancelled){$scanPhase.Text='SCAN CANCELLED';$scanCurrent.Text='No final report generated.';Start-Sleep -Milliseconds 350}else{Show-GuiResult $scan}}catch{[System.Windows.Forms.MessageBox]::Show($_.Exception.Message,'Scan Error','OK','Error')}finally{Set-GuiBusy $false ''}
+        $answer=[System.Windows.Forms.MessageBox]::Show('Search known Minecraft, launcher and Downloads locations?','MODWARDEN  //  FULL PC SCAN','YesNo','Question')
+        if($answer -eq 'Yes'){Run-GuiScan 'FULL PC'}
     })
-
     $btnCustom.Add_Click({
-        $dlg=New-Object System.Windows.Forms.FolderBrowserDialog; $dlg.Description="Select a folder containing Minecraft mods"; $dlg.ShowNewFolderButton=$false
-        if($dlg.ShowDialog() -eq 'OK'){$path=$dlg.SelectedPath;$script:GuiScanCancelled=$false;Set-GuiBusy $true "";$scanPhase.Text='CUSTOM SCAN  /  INITIALIZING';try{$scan=Invoke-GuiJarScan $path $path 'CUSTOM' ${function:Update-GuiScanProgress} { return $script:GuiScanCancelled };if($script:GuiScanCancelled){$scanPhase.Text='SCAN CANCELLED';$scanCurrent.Text='No final report generated.';Start-Sleep -Milliseconds 350}else{Show-GuiResult $scan}}catch{[System.Windows.Forms.MessageBox]::Show($_.Exception.Message,'Scan Error','OK','Error')}finally{Set-GuiBusy $false ''}}
+        $dlg=New-Object System.Windows.Forms.FolderBrowserDialog; $dlg.Description='Select a folder containing Minecraft mods'; $dlg.ShowNewFolderButton=$false
+        if($dlg.ShowDialog() -eq 'OK'){Run-GuiScan 'CUSTOM' $dlg.SelectedPath}
     })
-
-    $btnCopy.Add_Click({if($script:GuiLastReport){[System.Windows.Forms.Clipboard]::SetText($script:GuiLastReport);$status.Text='✓  REPORT COPIED';$status.ForeColor=$cyan;Start-Sleep -Milliseconds 450;$status.Text='●  READY';$status.ForeColor=[System.Drawing.Color]::FromArgb(90,220,150)}})
-    $btnCommand.Add_Click({[System.Windows.Forms.Clipboard]::SetText('powershell -ExecutionPolicy Bypass -File ModWarden.ps1');$status.Text='✓  COMMAND COPIED';$status.ForeColor=$cyan;Start-Sleep -Milliseconds 450;$status.Text='●  READY';$status.ForeColor=[System.Drawing.Color]::FromArgb(90,220,150)})
+    $btnCopy.Add_Click({if($script:GuiLastReport){[System.Windows.Forms.Clipboard]::SetText($script:GuiLastReport);$status.Text='✓  REPORT COPIED';$status.ForeColor=$cyan;[System.Windows.Forms.Application]::DoEvents();Start-Sleep -Milliseconds 350;$status.Text='●  READY';$status.ForeColor=$green}})
+    $btnCommand.Add_Click({[System.Windows.Forms.Clipboard]::SetText('powershell -ExecutionPolicy Bypass -Command "Invoke-Expression (Invoke-RestMethod ''https://raw.githubusercontent.com/albyii/ModWarden/main/ModWarden.ps1'')"');$status.Text='✓  LAUNCH COMMAND COPIED';$status.ForeColor=$cyan;[System.Windows.Forms.Application]::DoEvents();Start-Sleep -Milliseconds 350;$status.Text='●  READY';$status.ForeColor=$green})
     $btnOpen.Add_Click({if($script:GuiLastPath -and (Test-Path $script:GuiLastPath)){Start-Process explorer.exe -ArgumentList ('"{0}"' -f $script:GuiLastPath)}})
     $btnExit.Add_Click({$form.Close()})
+    $form.Add_KeyDown({param($sender,$e) if($e.KeyCode -eq 'Escape' -and $btnCancel.Enabled){$btnCancel.PerformClick()}})
 
-    $form.Add_Shown({$form.Activate()})
+    # Final layout pass ensures the report/stats have the exact usable width.
+    $layout={
+        $cw=$content.ClientSize.Width; $ch=$content.ClientSize.Height
+        $stats.Width=[Math]::Max(400,$cw-56)
+        $report.Width=[Math]::Max(400,$cw-56); $report.Height=[Math]::Max(260,$ch-204)
+        $scanOverlay.Size=$content.ClientSize
+        $scanCard.Left=[Math]::Max(0,[int](($scanOverlay.ClientSize.Width-$scanCard.Width)/2)); $scanCard.Top=[Math]::Max(0,[int](($scanOverlay.ClientSize.Height-$scanCard.Height)/2))
+    }
+    $content.Add_Resize($layout)
+    $form.Add_Shown({& $layout;& $centerScan;$form.Activate()})
     [System.Windows.Forms.Application]::Run($form)
 }
 
