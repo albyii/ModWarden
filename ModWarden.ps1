@@ -837,34 +837,157 @@ function Show-Report {
     Show-Banner
 
     $jarCount = @($Results).Count
+
+    # Keep the internal score only for the YES/NO moderation decision.
+    # Nothing score-related is displayed to the user.
     $sortedResults = @(
         $Results |
         Sort-Object @{Expression = { [int]$_.Score }; Descending = $true},
                     @{Expression = { $_.Name }; Ascending = $true}
     )
 
-    $suspicious = @($sortedResults | Where-Object { [int]$_.Score -ge 25 })
-
     $topScore = 0
     if ($jarCount -gt 0) {
         $topScore = [int](($sortedResults | Select-Object -First 1).Score)
     }
 
-    $verdictLabel = "CLEAN"
-    if ($topScore -ge 71)      { $verdictLabel = "HIGH CONFIDENCE CHEATER" }
-    elseif ($topScore -ge 51)  { $verdictLabel = "LIKELY CHEATER" }
-    elseif ($topScore -ge 25)  { $verdictLabel = "SUSPICIOUS" }
+    # 51+ remains the configured internal cheating threshold.
+    $isCheating = $topScore -ge 51
 
-    $verdictColor = switch ($verdictLabel) {
-        "HIGH CONFIDENCE CHEATER" { "Red" }
-        "LIKELY CHEATER"          { "Red" }
-        "SUSPICIOUS"              { "Yellow" }
-        default                   { "Green" }
+    # Friendly names make the result much easier to read.
+    $cheatNameMap = [ordered]@{
+        "AutoCrystal" = "AutoCrystal"
+        "AutoHitCrystal" = "AutoCrystal"
+        "AutoAnchor" = "AutoAnchor"
+        "AnchorTweaks" = "AnchorTweaks"
+        "DoubleAnchor" = "Double Anchor"
+        "SafeAnchor" = "Safe Anchor"
+        "AirAnchor" = "Air Anchor"
+        "AutoTotem" = "AutoTotem"
+        "InventoryTotem" = "Inventory Totem"
+        "HoverTotem" = "Hover Totem"
+        "LegitTotem" = "Totem Automation"
+        "AutoPot" = "AutoPot"
+        "AutoPotRefill" = "AutoPot Refill"
+        "AutoArmor" = "AutoArmor"
+        "AutoClicker" = "AutoClicker"
+        "AimAssist" = "AimAssist"
+        "SilentAim" = "Silent Aim"
+        "Silent Rotations" = "Silent Rotations"
+        "TriggerBot" = "TriggerBot"
+        "ShieldBreaker" = "Shield Breaker"
+        "ShieldDisabler" = "Shield Disabler"
+        "AxeSpam" = "Axe Spam"
+        "Wtap" = "W-Tap Automation"
+        "FakeLag" = "FakeLag"
+        "PingSpoof" = "Ping Spoof"
+        "LagReach" = "Reach"
+        "FastPlace" = "Fast Place"
+        "AntiBot" = "AntiBot"
+        "ChestSteal" = "Chest Steal"
+        "ElytraSwap" = "Elytra Swap"
+        "FastXP" = "Fast XP"
+        "FastExp" = "Fast XP"
+        "MaceSwap" = "Mace Swap"
+        "AutoMace" = "Auto Mace"
+        "SpearSwap" = "Spear Swap"
+        "StunSlam" = "Stun Slam"
+        "AutoWeb" = "Auto Web"
+        "WebMacro" = "Web Macro"
+        "AutoFirework" = "Auto Firework"
+        "AntiKnockback" = "Anti-Knockback"
+        "Antiknockback" = "Anti-Knockback"
+        "FakeInv" = "Fake Inventory"
+        "BlockESP" = "Block ESP"
+        "BaseFinder" = "Base Finder"
+        "KeyPearl" = "Key Pearl"
+        "LootYeeter" = "Loot Yeeter"
+        "Invsee" = "Inventory See"
+        "ItemExploit" = "Item Exploit"
+        "SelfDestruct" = "Self Destruct"
+        "AutoMine" = "Auto Mine"
+        "AutoEat" = "Auto Eat"
+        "AutoTPA" = "Auto TPA"
+        "AutoNethPot" = "Auto Nether Pot"
+        "AutoDtap" = "Auto D-Tap"
+        "AutoDoubleHand" = "Auto Double Hand"
+        "PackSpoof" = "Pack Spoof"
+        "Fakenick" = "Fake Nick"
+        "FakeItem" = "Fake Item"
+        "NoClip" = "NoClip"
+        "FreezePlayer" = "Freeze Player"
+        "Freecam" = "Freecam"
+        "Replace Mod" = "Suspicious Mod Replacement"
     }
 
-    $barLen = 34
-    $filled = [Math]::Max(0, [Math]::Min($barLen, [Math]::Round(($topScore / 100) * $barLen)))
-    $bar = ("█" * $filled) + ("░" * ($barLen - $filled))
+    $cheats = New-Object System.Collections.Generic.List[string]
+
+    foreach ($r in $sortedResults) {
+        # Only results that contribute meaningful cheat evidence are shown.
+        $rawHits = @($r.PatternHits) + @($r.StringHits)
+
+        foreach ($hit in $rawHits) {
+            $name = $null
+
+            foreach ($key in $cheatNameMap.Keys) {
+                if ($hit -ieq $key) {
+                    $name = $cheatNameMap[$key]
+                    break
+                }
+            }
+
+            if (-not $name) {
+                # Convert common signature variants into readable names.
+                switch -Regex ($hit) {
+                    '(?i)^autocrystal|crystal' { $name = "AutoCrystal"; break }
+                    '(?i)^autoanchor|anchor'  { $name = "AutoAnchor"; break }
+                    '(?i)^autototem|totem'    { $name = "AutoTotem"; break }
+                    '(?i)^autoclick'          { $name = "AutoClicker"; break }
+                    '(?i)^aimassist|aim.assist' { $name = "AimAssist"; break }
+                    '(?i)^triggerbot|trigger.bot' { $name = "TriggerBot"; break }
+                    '(?i)silent.*aim|silent.*rotation' { $name = "Silent Aim"; break }
+                    '(?i)^fakelag|fake.lag|pingspoof|ping.spoof' { $name = "FakeLag / Ping Spoof"; break }
+                    '(?i)shield.*(break|disable)' { $name = "Shield Breaker"; break }
+                    '(?i)mace.*swap|automace' { $name = "Mace Swap"; break }
+                    '(?i)elytra.*swap' { $name = "Elytra Swap"; break }
+                    '(?i)autoweb|webmacro' { $name = "Auto Web"; break }
+                    '(?i)antiknockback' { $name = "Anti-Knockback"; break }
+                    '(?i)fastplace' { $name = "Fast Place"; break }
+                    '(?i)cheststeal' { $name = "Chest Steal"; break }
+                    '(?i)blockesp' { $name = "Block ESP"; break }
+                    '(?i)basefinder' { $name = "Base Finder"; break }
+                    '(?i)keypearl' { $name = "Key Pearl"; break }
+                    '(?i)autopot' { $name = "AutoPot"; break }
+                    '(?i)autoarmor' { $name = "AutoArmor"; break }
+                    '(?i)stunslam' { $name = "Stun Slam"; break }
+                    '(?i)selfdestruct' { $name = "Self Destruct"; break }
+                    '(?i)autofirework' { $name = "Auto Firework"; break }
+                    '(?i)fastxp|fastexp' { $name = "Fast XP"; break }
+                    '(?i)antibot' { $name = "AntiBot"; break }
+                    '(?i)fakeinv' { $name = "Fake Inventory"; break }
+                    default { $name = $hit }
+                }
+            }
+
+            if ($name -and -not $cheats.Contains($name)) {
+                $cheats.Add($name)
+            }
+        }
+
+        # Known client names are useful as a single clean entry.
+        foreach ($kc in $KnownClients) {
+            if ($r.Name -match [regex]::Escape($kc) -or
+                @($r.PatternHits) -contains $kc -or
+                @($r.StringHits) -contains $kc) {
+                if (-not $cheats.Contains($kc)) {
+                    $cheats.Add($kc)
+                }
+            }
+        }
+    }
+
+    # Sort alphabetically so repeated signatures never create a spammy report.
+    $cheats = @($cheats | Sort-Object -Unique)
 
     Write-BoxTop -Color DarkGreen
     Write-BoxLine -Text "SCAN COMPLETE" -BorderColor DarkGreen -TextColor Green
@@ -879,62 +1002,32 @@ function Show-Report {
     Write-Host "  └─ SCAN TIME       $([Math]::Round($ElapsedSeconds,2))s"
     Write-Host ""
 
-    Write-Host "  RISK ASSESSMENT" -ForegroundColor Yellow
-    Write-Host "  $topScore / 100" -ForegroundColor $verdictColor
-    Write-Host "  $bar" -ForegroundColor $verdictColor
-    Write-Host "  $verdictLabel" -ForegroundColor $verdictColor
+    Write-Host "  MODERATION ASSUMPTION" -ForegroundColor Yellow
+    if ($isCheating) {
+        Write-Host "  CHEATING: YES" -ForegroundColor Red
+    }
+    else {
+        Write-Host "  CHEATING: NO" -ForegroundColor Green
+    }
     Write-Host ""
 
-    if ($suspicious.Count -gt 0) {
-        Write-Host "  CHEATER DETECTIONS" -ForegroundColor Red
-        Write-Host ""
-
+    Write-Host "  DETECTED CHEATS" -ForegroundColor Cyan
+    if ($cheats.Count -gt 0) {
         $i = 1
-        foreach ($r in $suspicious) {
-            $conf = "LOW"
-            if ($r.Score -ge 71) { $conf = "HIGH" }
-            elseif ($r.Score -ge 51) { $conf = "MEDIUM" }
-
-            Write-Host ("  [{0:D2}] {1}" -f $i, $r.Name) -ForegroundColor White
-            Write-Host "       Confidence: $conf" -ForegroundColor $verdictColor
-
-            if ($r.PatternHits.Count -gt 0) {
-                Write-Host "       ├─ Pattern signatures: $($r.PatternHits.Count)"
-            }
-            if ($r.StringHits.Count -gt 0) {
-                Write-Host "       ├─ Component/string matches: $($r.StringHits.Count)"
-            }
-            if ($r.BypassFlags.Count -gt 0) {
-                Write-Host "       ├─ Supporting indicators: $($r.BypassFlags.Count)"
-            }
-            if ($r.ObfuscationFlags.Count -gt 0) {
-                Write-Host "       ├─ Obfuscation indicators: $($r.ObfuscationFlags.Count)"
-            }
-            if ($r.ObfuscatorHits.Count -gt 0) {
-                Write-Host "       ├─ Known obfuscator: $($r.ObfuscatorHits.Count)"
-            }
-            if ($r.FullwidthHits.Count -gt 0) {
-                Write-Host "       ├─ Fullwidth Unicode indicators: $($r.FullwidthHits.Count)"
-            }
-            if ($r.Source) {
-                Write-Host "       ├─ Source: $($r.Source.Url) [$($r.Source.Classification)]"
-            }
-            Write-Host "       └─ Final Score: $([int]$r.Score) / 100" -ForegroundColor Yellow
-            Write-Host ""
-
+        foreach ($cheat in $cheats) {
+            Write-Host ("  [{0:D2}] {1}" -f $i, $cheat) -ForegroundColor White
             $i++
         }
     }
     else {
-        Write-Host "  CHEATER DETECTIONS" -ForegroundColor Green
-        Write-Host "  └─ None above the suspicious threshold." -ForegroundColor Green
-        Write-Host ""
+        Write-Host "  └─ No specific cheat signatures found." -ForegroundColor DarkGray
     }
+    Write-Host ""
 
     if ($JvmInfo.Running) {
         Write-Host "  JVM / RUNTIME" -ForegroundColor Cyan
         if ($JvmInfo.Flags.Count -gt 0) {
-            Write-Host "  └─ Injection flags detected:"
+            Write-Host "  └─ Runtime indicators detected:"
             foreach ($f in $JvmInfo.Flags) {
                 Write-Host "     • $f"
             }
@@ -947,10 +1040,12 @@ function Show-Report {
 
     Write-SectionRule
     Write-Host ""
-    Write-Host "  VERDICT" -ForegroundColor Yellow
-    Write-Host "  $verdictLabel" -ForegroundColor $verdictColor
-    Write-Host "  Threshold: 51 / 100" -ForegroundColor DarkGray
+    Write-Host "  NOTE" -ForegroundColor Yellow
+    Write-Host "  The result is a static signature-based assessment." -ForegroundColor DarkGray
+    Write-Host "  CHEATING: YES means the configured evidence threshold was met;" -ForegroundColor DarkGray
+    Write-Host "  it is not a mathematical proof of player behavior." -ForegroundColor DarkGray
     Write-Host ""
+
     Write-SectionRule
     Write-Host ""
     Write-Host "  MODWARDEN - by albyi_" -ForegroundColor DarkCyan
