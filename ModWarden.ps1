@@ -896,7 +896,6 @@ function Show-Report {
         "WebMacro" = "Web Macro"
         "AutoFirework" = "Auto Firework"
         "AntiKnockback" = "Anti-Knockback"
-        "Antiknockback" = "Anti-Knockback"
         "FakeInv" = "Fake Inventory"
         "BlockESP" = "Block ESP"
         "BaseFinder" = "Base Finder"
