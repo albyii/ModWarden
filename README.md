@@ -2,11 +2,13 @@
 
 **Professional Minecraft mod & client forensic analyzer — built entirely in PowerShell.**
 
-ModWarden statically inspects Minecraft `.jar` files for known client identifiers, modules/features, suspicious namespaces, obfuscation indicators and security-related artifacts.
+ModWarden statically inspects Minecraft `.jar` files for known client identifiers, cheat modules/features, suspicious namespaces, obfuscation indicators, archive artifacts and security-related indicators.
 
-> **51+ / 100 = CHEATER** is ModWarden's configured verdict threshold. A static signature result is evidence for review, not a mathematical proof of a player's behavior.
+> **CHEATING: YES / NO** is ModWarden's final moderation assumption. A static signature result is evidence for review, not mathematical proof of a player's behavior.
 
 ## ⚡ Quick Start
+
+Run ModWarden directly from GitHub:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -Command "Invoke-Expression (Invoke-RestMethod 'https://raw.githubusercontent.com/albyii/ModWarden/main/ModWarden.ps1')"
@@ -18,100 +20,121 @@ Or download/clone the repository and run:
 .\ModWarden.ps1
 ```
 
-Custom mods directory:
+### Scan Modes
 
-```powershell
-.\ModWarden.ps1 -ModsPath "C:\path	o\.minecraft\mods"
+From the normal CMD menu you can choose:
+
+```text
+[1] MINECRAFT SCAN
+[2] FULL PC SCAN
+[3] CUSTOM PATH
+[4] EXIT
 ```
 
-Machine-readable output:
+**Minecraft Scan** can locate common `.minecraft`, CurseForge, Modrinth and PrismLauncher mod directories.
 
-```powershell
-.\ModWarden.ps1 -JsonOutput
-```
+**Full PC Scan** searches known Minecraft/launcher locations and relevant folders on other drives.
+
+**Custom Path** lets you enter any directory containing Minecraft `.jar` files.
 
 ## 🔎 What ModWarden Checks
 
-- **Client signatures** — known Minecraft clients and utility clients.
-- **Component signatures** — AutoCrystal, AutoAnchor, AutoTotem, SilentAim, TriggerBot, FakeLag, MaceSwap and many others.
-- **Package/namespace evidence** — suspicious or known client namespaces.
-- **Archive structure** — JAR entry names and metadata.
-- **Class strings** — printable strings embedded in `.class` files.
-- **Obfuscation indicators** — known protection/obfuscation names.
-- **Security indicators** — credential/token/backdoor-related strings are surfaced as security evidence and are not automatically treated as cheat proof.
-- **Robust scanning** — unreadable JARs are reported instead of terminating the complete scan.
-
-## 📊 Risk Scoring
-
-| Score | ModWarden result |
-|---:|---|
-| 0–20 | LOW |
-| 21–40 | LOW RISK |
-| 41–50 | SUSPICIOUS |
-| **51–70** | **CHEATER** |
-| 71–85 | HIGH CONFIDENCE CHEATER |
-| 86–100 | VERY HIGH CONFIDENCE CHEATER |
-
-The score is based on configured evidence weights and corroboration bonuses. Generic indicators are deliberately kept low-weight to reduce false positives.
+* **Client signatures** — known Minecraft clients and utility clients.
+* **Component signatures** — AutoCrystal, AutoAnchor, AutoTotem, Silent Aim, TriggerBot, FakeLag, Mace Swap and many others.
+* **Package / namespace evidence** — suspicious or known client namespaces.
+* **Archive structure** — JAR entry names, nested JARs and metadata.
+* **Class strings** — printable strings embedded in `.class` and relevant metadata files.
+* **Obfuscation indicators** — suspicious class naming and known obfuscators.
+* **Security indicators** — runtime execution, HTTP activity, possible POST/exfiltration indicators and other artifacts are surfaced for investigation.
+* **Download source** — Windows Zone.Identifier metadata can classify sources such as Modrinth, CurseForge, GitHub, Discord, MediaFire, Mega and Google Drive.
+* **Modrinth verification** — JAR hashes can be checked against Modrinth's version-file API.
+* **JVM injection indicators** — running Java processes are checked for flags such as `-javaagent`, `-agentpath` and JDWP.
+* **Robust scanning** — unreadable or corrupt JARs are reported instead of terminating the complete scan.
 
 ## 🧾 Example
 
+A completed scan is intentionally kept simple:
+
 ```text
-  RISK ASSESSMENT
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                              SCAN COMPLETE                                   ║
+╚══════════════════════════════════════════════════════════════════════════════╝
 
-                         87 / 100
-                 ███████████████████████████████████░░░
-                   VERY HIGH CONFIDENCE
+  CHEATING: YES
 
-  DETECTIONS
+  DETECTED CHEATS
 
-  [01] DOOMSDAY CLIENT                    +35
-       ├─ CATEGORY              CLIENTS
-       ├─ MOD                   example.jar
-       └─ EVIDENCE              doomsday
+  [01] AutoAnchor
+  [02] AutoCrystal
+  [03] Mace Swap
+  [04] Silent Aim
+  [05] TriggerBot
 
-  [02] AUTOCRYSTAL                       +16
-       ├─ CATEGORY              COMPONENTS
-       ├─ MOD                   example.jar
-       └─ EVIDENCE              autoCrystal
+  ──────────────────────────────────────────────────────────────────────────────
 
-  VERDICT
-
-                         CHEATER
-             ModWarden threshold: 51+ = CHEATER.
+  SCAN
+  ├─ MODE            MINECRAFT
+  ├─ TARGET          C:\Users\User\AppData\Roaming\.minecraft\mods
+  ├─ FILES ANALYZED  12
+  ├─ JAR FILES       12
+  └─ SCAN TIME       1.84s
 ```
+
+If no cheat signatures are identified:
+
+```text
+  CHEATING: NO
+
+  DETECTED CHEATS
+
+  None
+```
+
+Detected cheat names are deduplicated so the same detection is not printed repeatedly.
 
 ## 📁 Project Structure
 
 ```text
 ModWarden/
 ├── ModWarden.ps1
-├── data/
-│   └── signatures.json
 ├── README.md
 └── .gitignore
 ```
 
+ModWarden currently keeps its signature database directly inside `ModWarden.ps1`, so there is no required external `data/signatures.json` file.
+
 ## 🧠 Signature Database
 
-`data/signatures.json` is intentionally external so signatures can be updated without rewriting the scanner.
+The scanner uses built-in signature collections for:
 
-Each entry contains a name, patterns, weight and explanation. Add new variants carefully and prefer specific identifiers over broad everyday words.
+* cheat/client names;
+* module and feature identifiers;
+* suspicious package paths;
+* class strings;
+* obfuscators;
+* security-related indicators.
+
+Signatures are combined and deduplicated before scanning. Specific identifiers are preferred over broad everyday words to help reduce unnecessary false positives.
 
 ## 🔐 Safety
 
 ModWarden is a **defensive forensic scanner**.
 
 It:
-- does not modify scanned JARs;
-- does not execute code from scanned JARs;
-- does not collect credentials or tokens;
-- does not attempt to bypass anti-cheat systems;
-- reports suspicious security indicators for manual investigation.
+
+* does not modify scanned JARs;
+* does not execute code from scanned JARs;
+* does not collect credentials or tokens;
+* does not attempt to bypass anti-cheat systems;
+* reports suspicious security indicators for manual investigation.
 
 ## ⚠️ Important
 
-No static signature scanner can guarantee perfect detection or zero false positives. A ModWarden result should be combined with the available server/staff evidence and reviewed before a final moderation action.
+No static signature scanner can guarantee perfect detection or zero false positives.
+
+A `CHEATING: YES` result means ModWarden found enough configured evidence to make that moderation assumption. It should still be combined with available server/staff evidence and reviewed before a final moderation action.
+
+Security-related detections are not automatically proof of cheating and should be investigated separately.
 
 ## 👤 Contact
 
