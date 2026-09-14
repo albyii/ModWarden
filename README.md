@@ -116,6 +116,7 @@ No static signature scanner can guarantee perfect detection or zero false positi
 ## 👤 Contact
 
 **MODWARDEN - by albyi_**
+
 Contributor - WindowsFolder
 
 **Discord:** `albyi_i`
