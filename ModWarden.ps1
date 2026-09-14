@@ -513,7 +513,7 @@ function Test-KnownObfuscator {
 function Analyze-Jar {
     param([string]$JarPath)
 
-    $result = [ordered]@{
+    $result = [PSCustomObject][ordered]@{
         Name              = Split-Path $JarPath -Leaf
         Path              = $JarPath
         Verified          = $false
@@ -831,115 +831,29 @@ function Invoke-FullPcScan {
 #  REPORT
 # ---------------------------------------------------------------------------
 
-# Returns the Loveity/Cruelty pill for a given score: a filled circle plus
-# label, colored magenta ("pink") at/above the threshold and red below it.
-function Get-ScoreVerdictCircle {
-    param([int]$Score, [int]$Threshold = 51)
-
-    $circleChar = [char]0x25CF   # ●
-
-    if ($Score -ge $Threshold) {
-        return @{ Label = "LOVEITY"; Color = "Magenta"; Char = $circleChar }
-    } else {
-        return @{ Label = "CRUELTY"; Color = "Red"; Char = $circleChar }
-    }
-}
-
 function Show-Report {
     param($Results, $TargetLabel, $FilesAnalyzed, $ElapsedSeconds, $Mode, $JvmInfo)
 
     Show-Banner
-    Write-BoxTop -Color DarkGreen
-    Write-BoxLine -Text "SCAN COMPLETE" -BorderColor DarkGreen -TextColor Green
-    Write-BoxBottom -Color DarkGreen
-    Write-Host ""
 
-    $jarCount = $Results.Count
-    Write-Host "  SCAN"
-    Write-Host "  |- MODE                    $Mode"
-    Write-Host "  |- TARGET                  $TargetLabel"
-    Write-Host "  |- FILES ANALYZED          $FilesAnalyzed"
-    Write-Host "  |- JAR FILES               $jarCount"
-    Write-Host "  ``- SCAN TIME               $([Math]::Round($ElapsedSeconds,2))s"
-    Write-Host ""
+    $jarCount = @($Results).Count
+    $sortedResults = @(
+        $Results |
+        Sort-Object @{Expression = { [int]$_.Score }; Descending = $true},
+                    @{Expression = { $_.Name }; Ascending = $true}
+    )
+
+    $suspicious = @($sortedResults | Where-Object { [int]$_.Score -ge 25 })
 
     $topScore = 0
-    if ($jarCount -gt 0) { $topScore = ($Results | Measure-Object -Property Score -Maximum).Maximum }
-
-    $barLen = 34
-    $filled = [Math]::Round(($topScore / 100) * $barLen)
-    $bar = ("#" * $filled).PadRight($barLen, '.')
+    if ($jarCount -gt 0) {
+        $topScore = [int](($sortedResults | Select-Object -First 1).Score)
+    }
 
     $verdictLabel = "CLEAN"
     if ($topScore -ge 71)      { $verdictLabel = "HIGH CONFIDENCE CHEATER" }
     elseif ($topScore -ge 51)  { $verdictLabel = "LIKELY CHEATER" }
     elseif ($topScore -ge 25)  { $verdictLabel = "SUSPICIOUS" }
-    else                       { $verdictLabel = "CLEAN" }
-
-    # Loveity (pink, >= 51) / Cruelty (red, < 51) indicator
-    $circle = Get-ScoreVerdictCircle -Score $topScore -Threshold 51
-
-    Write-Host "  RISK ASSESSMENT"
-    Write-Host ""
-    Write-Host "                              $topScore / 100"
-    Write-Host "                   $bar"
-    Write-Host ""
-    Write-Host "                     $($circle.Char) $($circle.Label)" -ForegroundColor $circle.Color
-    Write-Host ""
-    Write-Host "                         $verdictLabel"
-    Write-Host ""
-
-    $suspicious = $Results | Where-Object { $_.Score -ge 25 } | Sort-Object Score -Descending
-
-    if ($suspicious.Count -gt 0) {
-        Write-Host "  DETECTIONS"
-        Write-Host ""
-        $i = 1
-        foreach ($r in $suspicious) {
-            $conf = "LOW"
-            if ($r.Score -ge 71) { $conf = "HIGH" }
-            elseif ($r.Score -ge 51) { $conf = "MEDIUM" }
-
-            $rowCircle = Get-ScoreVerdictCircle -Score $r.Score -Threshold 51
-
-            Write-Host ("  [{0:D2}] {1} (Score: {2}) " -f $i, $r.Name, $r.Score) -NoNewline
-            Write-Host "$($rowCircle.Char) $($rowCircle.Label)" -ForegroundColor $rowCircle.Color
-            Write-Host "       Confidence: $conf"
-            if ($r.PatternHits.Count -gt 0)      { Write-Host "       |- Patterns: $($r.PatternHits -join ', ')" }
-            if ($r.StringHits.Count -gt 0)       { Write-Host "       |- Strings: $($r.StringHits -join ', ')" }
-            if ($r.FullwidthHits.Count -gt 0)    { Write-Host "       |- Fullwidth Unicode: $($r.FullwidthHits -join ', ')" }
-            if ($r.BypassFlags.Count -gt 0)      { Write-Host "       |- Bypass/Injection: $($r.BypassFlags -join ' | ')" }
-            if ($r.ObfuscationFlags.Count -gt 0) { Write-Host "       |- Obfuscation: $($r.ObfuscationFlags -join ' | ')" }
-            if ($r.ObfuscatorHits.Count -gt 0)   { Write-Host "       |- Known Obfuscator: $($r.ObfuscatorHits -join ', ')" }
-            if ($r.Source) {
-                Write-Host "       |- Source: $($r.Source.Url) [$($r.Source.Classification)]"
-            }
-            Write-Host ""
-            $i++
-        }
-    } else {
-        Write-Host "  No suspicious mods detected."
-        Write-Host ""
-    }
-
-    $verified = $Results | Where-Object { $_.Verified }
-    if ($verified.Count -gt 0) {
-        Write-Host "  VERIFIED (SAFE) MODS" -ForegroundColor DarkGray
-        Write-Host "       $($verified.Count) mod(s) matched a verified Modrinth release and were excluded" -ForegroundColor DarkGray
-        Write-Host "       from the risk list above." -ForegroundColor DarkGray
-        Write-Host ""
-    }
-
-    if ($JvmInfo.Running) {
-        Write-Host "  JVM / RUNTIME"
-        if ($JvmInfo.Flags.Count -gt 0) {
-            Write-Host "  Active Java process detected - injection flags found:"
-            foreach ($f in $JvmInfo.Flags) { Write-Host "       - $f" }
-        } else {
-            Write-Host "  Active Java process detected - no injection flags found."
-        }
-        Write-Host ""
-    }
 
     $verdictColor = switch ($verdictLabel) {
         "HIGH CONFIDENCE CHEATER" { "Red" }
@@ -948,16 +862,100 @@ function Show-Report {
         default                   { "Green" }
     }
 
-    Write-BoxTop -Color DarkGray
-    Write-BoxLine -Text "VERDICT" -BorderColor DarkGray -TextColor Yellow
-    Write-BoxLine -Text ""
-    Write-BoxLine -Text "$($circle.Char) $($circle.Label)" -TextColor $circle.Color
-    Write-BoxLine -Text $verdictLabel -TextColor $verdictColor
-    Write-BoxLine -Text "Threshold: 51 / 100" -TextColor DarkGray
-    Write-BoxLine -Text ""
-    Write-BoxBottom -Color DarkGray
+    $barLen = 34
+    $filled = [Math]::Max(0, [Math]::Min($barLen, [Math]::Round(($topScore / 100) * $barLen)))
+    $bar = ("█" * $filled) + ("░" * ($barLen - $filled))
+
+    Write-BoxTop -Color DarkGreen
+    Write-BoxLine -Text "SCAN COMPLETE" -BorderColor DarkGreen -TextColor Green
+    Write-BoxBottom -Color DarkGreen
     Write-Host ""
-    Write-Host "  Unsure about a detection? Review manually before acting." -ForegroundColor DarkGray
+
+    Write-Host "  SCAN" -ForegroundColor Cyan
+    Write-Host "  ├─ MODE            $Mode"
+    Write-Host "  ├─ TARGET          $TargetLabel"
+    Write-Host "  ├─ FILES ANALYZED  $FilesAnalyzed"
+    Write-Host "  ├─ JAR FILES       $jarCount"
+    Write-Host "  └─ SCAN TIME       $([Math]::Round($ElapsedSeconds,2))s"
+    Write-Host ""
+
+    Write-Host "  RISK ASSESSMENT" -ForegroundColor Yellow
+    Write-Host "  $topScore / 100" -ForegroundColor $verdictColor
+    Write-Host "  $bar" -ForegroundColor $verdictColor
+    Write-Host "  $verdictLabel" -ForegroundColor $verdictColor
+    Write-Host ""
+
+    if ($suspicious.Count -gt 0) {
+        Write-Host "  CHEATER DETECTIONS" -ForegroundColor Red
+        Write-Host ""
+
+        $i = 1
+        foreach ($r in $suspicious) {
+            $conf = "LOW"
+            if ($r.Score -ge 71) { $conf = "HIGH" }
+            elseif ($r.Score -ge 51) { $conf = "MEDIUM" }
+
+            Write-Host ("  [{0:D2}] {1}" -f $i, $r.Name) -ForegroundColor White
+            Write-Host "       Confidence: $conf" -ForegroundColor $verdictColor
+
+            if ($r.PatternHits.Count -gt 0) {
+                Write-Host "       ├─ Pattern signatures: $($r.PatternHits.Count)"
+            }
+            if ($r.StringHits.Count -gt 0) {
+                Write-Host "       ├─ Component/string matches: $($r.StringHits.Count)"
+            }
+            if ($r.BypassFlags.Count -gt 0) {
+                Write-Host "       ├─ Supporting indicators: $($r.BypassFlags.Count)"
+            }
+            if ($r.ObfuscationFlags.Count -gt 0) {
+                Write-Host "       ├─ Obfuscation indicators: $($r.ObfuscationFlags.Count)"
+            }
+            if ($r.ObfuscatorHits.Count -gt 0) {
+                Write-Host "       ├─ Known obfuscator: $($r.ObfuscatorHits.Count)"
+            }
+            if ($r.FullwidthHits.Count -gt 0) {
+                Write-Host "       ├─ Fullwidth Unicode indicators: $($r.FullwidthHits.Count)"
+            }
+            if ($r.Source) {
+                Write-Host "       ├─ Source: $($r.Source.Url) [$($r.Source.Classification)]"
+            }
+            Write-Host "       └─ Final Score: $([int]$r.Score) / 100" -ForegroundColor Yellow
+            Write-Host ""
+
+            $i++
+        }
+    }
+    else {
+        Write-Host "  CHEATER DETECTIONS" -ForegroundColor Green
+        Write-Host "  └─ None above the suspicious threshold." -ForegroundColor Green
+        Write-Host ""
+    }
+
+    if ($JvmInfo.Running) {
+        Write-Host "  JVM / RUNTIME" -ForegroundColor Cyan
+        if ($JvmInfo.Flags.Count -gt 0) {
+            Write-Host "  └─ Injection flags detected:"
+            foreach ($f in $JvmInfo.Flags) {
+                Write-Host "     • $f"
+            }
+        }
+        else {
+            Write-Host "  └─ Java process active; no injection flags found." -ForegroundColor DarkGray
+        }
+        Write-Host ""
+    }
+
+    Write-SectionRule
+    Write-Host ""
+    Write-Host "  VERDICT" -ForegroundColor Yellow
+    Write-Host "  $verdictLabel" -ForegroundColor $verdictColor
+    Write-Host "  Threshold: 51 / 100" -ForegroundColor DarkGray
+    Write-Host ""
+    Write-SectionRule
+    Write-Host ""
+    Write-Host "  MODWARDEN - by albyi_" -ForegroundColor DarkCyan
+    Write-Host "  Discord: albyi_i" -ForegroundColor DarkGray
+    Write-Host "  Unsure about a detection? Contact me on Discord for review." -ForegroundColor DarkGray
     Write-Host ""
     Write-SectionRule
     Write-Host ""
