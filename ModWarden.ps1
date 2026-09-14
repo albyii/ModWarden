@@ -837,223 +837,108 @@ function Show-Report {
     Show-Banner
 
     $jarCount = @($Results).Count
+    $sortedResults = @($Results | Sort-Object @{Expression={ [int]$_.Score }; Descending=$true}, @{Expression={ $_.Name }; Ascending=$true})
 
-    # Keep the internal score only for the YES/NO moderation decision.
-    # Nothing score-related is displayed to the user.
-    $sortedResults = @(
-        $Results |
-        Sort-Object @{Expression = { [int]$_.Score }; Descending = $true},
-                    @{Expression = { $_.Name }; Ascending = $true}
-    )
-
+    # Keep the original internal scoring logic for the YES/NO decision only.
     $topScore = 0
-    if ($jarCount -gt 0) {
-        $topScore = [int](($sortedResults | Select-Object -First 1).Score)
-    }
-
-    # 51+ remains the configured internal cheating threshold.
+    if ($jarCount -gt 0) { $topScore = [int](($sortedResults | Select-Object -First 1).Score) }
     $isCheating = $topScore -ge 51
 
-    # Friendly names make the result much easier to read.
-    $cheatNameMap = [ordered]@{
-        "AutoCrystal" = "AutoCrystal"
-        "AutoHitCrystal" = "AutoCrystal"
-        "AutoAnchor" = "AutoAnchor"
-        "AnchorTweaks" = "AnchorTweaks"
-        "DoubleAnchor" = "Double Anchor"
-        "SafeAnchor" = "Safe Anchor"
-        "AirAnchor" = "Air Anchor"
-        "AutoTotem" = "AutoTotem"
-        "InventoryTotem" = "Inventory Totem"
-        "HoverTotem" = "Hover Totem"
-        "LegitTotem" = "Totem Automation"
-        "AutoPot" = "AutoPot"
-        "AutoPotRefill" = "AutoPot Refill"
-        "AutoArmor" = "AutoArmor"
-        "AutoClicker" = "AutoClicker"
-        "AimAssist" = "AimAssist"
-        "SilentAim" = "Silent Aim"
-        "Silent Rotations" = "Silent Rotations"
-        "TriggerBot" = "TriggerBot"
-        "ShieldBreaker" = "Shield Breaker"
-        "ShieldDisabler" = "Shield Disabler"
-        "AxeSpam" = "Axe Spam"
-        "Wtap" = "W-Tap Automation"
-        "FakeLag" = "FakeLag"
-        "PingSpoof" = "Ping Spoof"
-        "LagReach" = "Reach"
-        "FastPlace" = "Fast Place"
-        "AntiBot" = "AntiBot"
-        "ChestSteal" = "Chest Steal"
-        "ElytraSwap" = "Elytra Swap"
-        "FastXP" = "Fast XP"
-        "FastExp" = "Fast XP"
-        "MaceSwap" = "Mace Swap"
-        "AutoMace" = "Auto Mace"
-        "SpearSwap" = "Spear Swap"
-        "StunSlam" = "Stun Slam"
-        "AutoWeb" = "Auto Web"
-        "WebMacro" = "Web Macro"
-        "AutoFirework" = "Auto Firework"
-        "AntiKnockback" = "Anti-Knockback"
-        "FakeInv" = "Fake Inventory"
-        "BlockESP" = "Block ESP"
-        "BaseFinder" = "Base Finder"
-        "KeyPearl" = "Key Pearl"
-        "LootYeeter" = "Loot Yeeter"
-        "Invsee" = "Inventory See"
-        "ItemExploit" = "Item Exploit"
-        "SelfDestruct" = "Self Destruct"
-        "AutoMine" = "Auto Mine"
-        "AutoEat" = "Auto Eat"
-        "AutoTPA" = "Auto TPA"
-        "AutoNethPot" = "Auto Nether Pot"
-        "AutoDtap" = "Auto D-Tap"
-        "AutoDoubleHand" = "Auto Double Hand"
-        "PackSpoof" = "Pack Spoof"
-        "Fakenick" = "Fake Nick"
-        "FakeItem" = "Fake Item"
-        "NoClip" = "NoClip"
-        "FreezePlayer" = "Freeze Player"
-        "Freecam" = "Freecam"
-        "Replace Mod" = "Suspicious Mod Replacement"
+    $cheatNameMap = @{
+        'AutoCrystal'='AutoCrystal'; 'AutoHitCrystal'='AutoCrystal'; 'CrystalAura'='CrystalAura'
+        'AutoAnchor'='AutoAnchor'; 'DoubleAnchor'='Double Anchor'; 'SafeAnchor'='Safe Anchor'; 'AirAnchor'='Air Anchor'
+        'AutoTotem'='AutoTotem'; 'InventoryTotem'='Inventory Totem'; 'HoverTotem'='Hover Totem'; 'LegitTotem'='Inventory Totem'
+        'AutoPot'='AutoPot'; 'AutoPotRefill'='AutoPot Refill'; 'AutoArmor'='AutoArmor'
+        'AutoClicker'='AutoClicker'; 'DoubleClicker'='Double Clicker'; 'CPSBoost'='CPS Boost'
+        'AimAssist'='AimAssist'; 'AimBot'='Aimbot'; 'AutoAim'='AutoAim'; 'SilentAim'='Silent Aim'; 'SilentRotations'='Silent Rotations'; 'AimLock'='AimLock'; 'HeadSnap'='HeadSnap'; 'TriggerBot'='TriggerBot'; 'ClickAura'='ClickAura'; 'KillAura'='KillAura'; 'MultiAura'='MultiAura'; 'ForceField'='ForceField'
+        'ShieldBreaker'='Shield Breaker'; 'ShieldDisabler'='Shield Disabler'; 'AutoDoubleHand'='Auto Double Hand'; 'AxeSpam'='Axe Spam'
+        'MaceSwap'='Mace Swap'; 'AutoMace'='Mace Swap'; 'SpearSwap'='Spear Swap'; 'StunSlam'='Stun Slam'
+        'PingSpoof'='Ping Spoof'; 'FakeLag'='Fake Lag'; 'FakeLatency'='Fake Latency'; 'FakePing'='Fake Ping'
+        'ElytraSwap'='Elytra Swap'; 'AutoFirework'='Auto Firework'; 'ElytraSpeed'='Elytra Speed'; 'InstantElytra'='Instant Elytra'
+        'FastPlace'='Fast Place'; 'AutoPlace'='Auto Place'; 'InstantPlace'='Instant Place'; 'ScaffoldWalk'='Scaffold Walk'; 'AutoBridge'='Auto Bridge'; 'FastBridge'='Fast Bridge'
+        'ChestSteal'='Chest Steal'; 'ChestStealer'='Chest Stealer'; 'InvManager'='Inventory Manager'; 'FakeInv'='Fake Inventory'; 'LootYeeter'='Loot Yeeter'
+        'BlockESP'='Block ESP'; 'PlayerESP'='Player ESP'; 'MobESP'='Mob ESP'; 'ItemESP'='Item ESP'; 'StorageESP'='Storage ESP'; 'Tracers'='Tracers'; 'XRayHack'='X-Ray'; 'OreFinder'='Ore Finder'; 'CaveFinder'='Cave Finder'; 'BaseFinder'='Base Finder'
+        'AntiBot'='AntiBot'; 'AntiKB'='Anti-Knockback'; 'Antiknockback'='Anti-Knockback'; 'NoKnockback'='Anti-Knockback'; 'VelocitySpoof'='Velocity Spoof'; 'KBReduce'='Knockback Reduction'
+        'ReachHack'='Reach'; 'ExtendReach'='Reach'; 'LongReach'='Reach'; 'HitboxExpand'='Hitbox Expand'; 'LagReach'='Lag Reach'
+        'SpeedHack'='Speed'; 'BHop'='BunnyHop'; 'BunnyHop'='BunnyHop'; 'FlyHack'='Fly'; 'PacketFly'='Packet Fly'; 'BoatFly'='Boat Fly'; 'AirJump'='Air Jump'; 'NoFallDamage'='NoFall'; 'StepHack'='Step'; 'FastClimb'='Fast Climb'; 'WaterWalk'='Water Walk'; 'LiquidWalk'='Liquid Walk'; 'NoSlow'='NoSlow'; 'NoSlowdown'='NoSlow'; 'NoWeb'='NoWeb'
+        'AutoMine'='AutoMine'; 'Nuker'='Nuker'; 'InstantBreak'='Instant Break'; 'GhostHand'='Ghost Hand'; 'AirPlace'='Air Place'
+        'AutoSprint'='AutoSprint'; 'AutoRespawn'='AutoRespawn'; 'AutoEat'='AutoEat'; 'AutoWeapon'='AutoWeapon'; 'AutoSword'='AutoSword'; 'AutoCity'='AutoCity'; 'AutoGap'='AutoGap'; 'AutoPearl'='AutoPearl'; 'KeyPearl'='Key Pearl'; 'AutoWeb'='Auto Web'; 'WebMacro'='Web Macro'; 'AntiWeb'='Anti-Web'; 'AutoTPA'='AutoTPA'; 'PopSwitch'='Pop Switch'; 'Refill'='Refill'; 'FastXP'='Fast XP'; 'FastExp'='Fast XP'
+        'SelfDestruct'='Self Destruct'; 'HideClient'='Hide Client'; 'PackSpoof'='Pack Spoof'; 'AuthBypass'='Auth Bypass'; 'LicenseCheckMixin'='License Bypass'; 'ItemExploit'='Item Exploit'; 'SessionStealer'='Session Stealer'; 'TokenLogger'='Token Logger'; 'TokenGrabber'='Token Grabber'; 'KeyLogger'='Keylogger'; 'Backdoor'='Backdoor'; 'RemoteAccess'='Remote Access'; 'ReverseShell'='Reverse Shell'
+        'Freecam'='Freecam'; 'NoClip'='NoClip'; 'WallHack'='Wallhack'; 'TargetHUD'='Target HUD'; 'ReachDisplay'='Reach Display'; 'NoSwing'='No Swing'; 'Criticals'='Criticals'; 'AutoCrit'='AutoCrit'; 'AlwaysCrit'='Always Crit'; 'WTap'='W-Tap'; 'TargetStrafe'='Target Strafe'; 'Burrow'='Burrow'; 'SelfTrap'='Self Trap'; 'HoleFiller'='Hole Filler'; 'AntiSurround'='Anti Surround'; 'AntiBurrow'='Anti Burrow'
     }
 
-    $cheats = New-Object System.Collections.Generic.List[string]
-
+    $detectedCheats = New-Object System.Collections.Generic.HashSet[string]([System.StringComparer]::OrdinalIgnoreCase)
     foreach ($r in $sortedResults) {
-        # Only results that contribute meaningful cheat evidence are shown.
-        $rawHits = @($r.PatternHits) + @($r.StringHits)
-
-        foreach ($hit in $rawHits) {
+        foreach ($hit in @($r.PatternHits) + @($r.StringHits)) {
             $name = $null
-
-            foreach ($key in $cheatNameMap.Keys) {
-                if ($hit -ieq $key) {
-                    $name = $cheatNameMap[$key]
-                    break
-                }
+            if ($cheatNameMap.ContainsKey([string]$hit)) { $name = $cheatNameMap[[string]$hit] }
+            else {
+                $h = [string]$hit
+                if ($h -match '(?i)crystal') { $name='CrystalAura' }
+                elseif ($h -match '(?i)anchor') { $name='Anchor' }
+                elseif ($h -match '(?i)totem') { $name='Totem Automation' }
+                elseif ($h -match '(?i)aim') { $name='AimAssist' }
+                elseif ($h -match '(?i)click') { $name='AutoClicker' }
+                elseif ($h -match '(?i)web') { $name='Web Automation' }
+                elseif ($h -match '(?i)elytra') { $name='Elytra Automation' }
+                elseif ($h -match '(?i)knockback|velocity') { $name='Anti-Knockback' }
+                elseif ($h -match '(?i)esp|glowing') { $name='ESP' }
             }
-
-            if (-not $name) {
-                # Convert common signature variants into readable names.
-                switch -Regex ($hit) {
-                    '(?i)^autocrystal|crystal' { $name = "AutoCrystal"; break }
-                    '(?i)^autoanchor|anchor'  { $name = "AutoAnchor"; break }
-                    '(?i)^autototem|totem'    { $name = "AutoTotem"; break }
-                    '(?i)^autoclick'          { $name = "AutoClicker"; break }
-                    '(?i)^aimassist|aim.assist' { $name = "AimAssist"; break }
-                    '(?i)^triggerbot|trigger.bot' { $name = "TriggerBot"; break }
-                    '(?i)silent.*aim|silent.*rotation' { $name = "Silent Aim"; break }
-                    '(?i)^fakelag|fake.lag|pingspoof|ping.spoof' { $name = "FakeLag / Ping Spoof"; break }
-                    '(?i)shield.*(break|disable)' { $name = "Shield Breaker"; break }
-                    '(?i)mace.*swap|automace' { $name = "Mace Swap"; break }
-                    '(?i)elytra.*swap' { $name = "Elytra Swap"; break }
-                    '(?i)autoweb|webmacro' { $name = "Auto Web"; break }
-                    '(?i)antiknockback' { $name = "Anti-Knockback"; break }
-                    '(?i)fastplace' { $name = "Fast Place"; break }
-                    '(?i)cheststeal' { $name = "Chest Steal"; break }
-                    '(?i)blockesp' { $name = "Block ESP"; break }
-                    '(?i)basefinder' { $name = "Base Finder"; break }
-                    '(?i)keypearl' { $name = "Key Pearl"; break }
-                    '(?i)autopot' { $name = "AutoPot"; break }
-                    '(?i)autoarmor' { $name = "AutoArmor"; break }
-                    '(?i)stunslam' { $name = "Stun Slam"; break }
-                    '(?i)selfdestruct' { $name = "Self Destruct"; break }
-                    '(?i)autofirework' { $name = "Auto Firework"; break }
-                    '(?i)fastxp|fastexp' { $name = "Fast XP"; break }
-                    '(?i)antibot' { $name = "AntiBot"; break }
-                    '(?i)fakeinv' { $name = "Fake Inventory"; break }
-                    default { $name = $hit }
-                }
-            }
-
-            if ($name -and -not $cheats.Contains($name)) {
-                $cheats.Add($name)
-            }
+            if ($name) { [void]$detectedCheats.Add($name) }
         }
-
-        # Known client names are useful as a single clean entry.
         foreach ($kc in $KnownClients) {
-            if ($r.Name -match [regex]::Escape($kc) -or
-                @($r.PatternHits) -contains $kc -or
-                @($r.StringHits) -contains $kc) {
-                if (-not $cheats.Contains($kc)) {
-                    $cheats.Add($kc)
-                }
-            }
+            if ($r.Name -match [regex]::Escape($kc) -or $r.PatternHits -contains $kc -or $r.StringHits -contains $kc) { [void]$detectedCheats.Add($kc) }
         }
     }
+    $detectedCheats = @($detectedCheats | Sort-Object)
 
-    # Sort alphabetically so repeated signatures never create a spammy report.
-    $cheats = @($cheats | Sort-Object -Unique)
+    $verdictColor = if ($isCheating) { 'Red' } else { 'Green' }
+    $verdict = if ($isCheating) { 'YES' } else { 'NO' }
 
     Write-BoxTop -Color DarkGreen
-    Write-BoxLine -Text "SCAN COMPLETE" -BorderColor DarkGreen -TextColor Green
+    Write-BoxLine -Text 'SCAN COMPLETE' -BorderColor DarkGreen -TextColor Green
     Write-BoxBottom -Color DarkGreen
-    Write-Host ""
+    Write-Host ''
 
-    Write-Host "  SCAN" -ForegroundColor Cyan
+    Write-Host '  CHEATING: ' -ForegroundColor Cyan -NoNewline
+    Write-Host $verdict -ForegroundColor $verdictColor
+    Write-Host ''
+
+    Write-Host '  DETECTED CHEATS' -ForegroundColor Yellow
+    Write-Host ''
+    if ($detectedCheats.Count -gt 0) {
+        for ($i=0; $i -lt $detectedCheats.Count; $i++) {
+            Write-Host ('  [{0:D2}] {1}' -f ($i + 1), $detectedCheats[$i]) -ForegroundColor White
+        }
+    } else {
+        Write-Host '  None' -ForegroundColor Green
+    }
+    Write-Host ''
+
+    Write-SectionRule
+    Write-Host ''
+    Write-Host '  SCAN' -ForegroundColor Cyan
     Write-Host "  ├─ MODE            $Mode"
     Write-Host "  ├─ TARGET          $TargetLabel"
     Write-Host "  ├─ FILES ANALYZED  $FilesAnalyzed"
     Write-Host "  ├─ JAR FILES       $jarCount"
     Write-Host "  └─ SCAN TIME       $([Math]::Round($ElapsedSeconds,2))s"
-    Write-Host ""
-
-    Write-Host "  MODERATION ASSUMPTION" -ForegroundColor Yellow
-    if ($isCheating) {
-        Write-Host "  CHEATING: YES" -ForegroundColor Red
-    }
-    else {
-        Write-Host "  CHEATING: NO" -ForegroundColor Green
-    }
-    Write-Host ""
-
-    Write-Host "  DETECTED CHEATS" -ForegroundColor Cyan
-    if ($cheats.Count -gt 0) {
-        $i = 1
-        foreach ($cheat in $cheats) {
-            Write-Host ("  [{0:D2}] {1}" -f $i, $cheat) -ForegroundColor White
-            $i++
-        }
-    }
-    else {
-        Write-Host "  └─ No specific cheat signatures found." -ForegroundColor DarkGray
-    }
-    Write-Host ""
+    Write-Host ''
 
     if ($JvmInfo.Running) {
-        Write-Host "  JVM / RUNTIME" -ForegroundColor Cyan
+        Write-Host '  JVM / RUNTIME' -ForegroundColor Cyan
         if ($JvmInfo.Flags.Count -gt 0) {
-            Write-Host "  └─ Runtime indicators detected:"
-            foreach ($f in $JvmInfo.Flags) {
-                Write-Host "     • $f"
-            }
-        }
-        else {
-            Write-Host "  └─ Java process active; no injection flags found." -ForegroundColor DarkGray
-        }
-        Write-Host ""
+            foreach ($f in $JvmInfo.Flags) { Write-Host "  • $f" }
+        } else { Write-Host '  └─ Java process active; no injection flags found.' -ForegroundColor DarkGray }
+        Write-Host ''
     }
 
     Write-SectionRule
-    Write-Host ""
-    Write-Host "  NOTE" -ForegroundColor Yellow
-    Write-Host "  The result is a static signature-based assessment." -ForegroundColor DarkGray
-    Write-Host "  CHEATING: YES means the configured evidence threshold was met;" -ForegroundColor DarkGray
-    Write-Host "  it is not a mathematical proof of player behavior." -ForegroundColor DarkGray
-    Write-Host ""
-
-    Write-SectionRule
-    Write-Host ""
-    Write-Host "  MODWARDEN - by albyi_" -ForegroundColor DarkCyan
-    Write-Host "  Discord: albyi_i" -ForegroundColor DarkGray
-    Write-Host "  Unsure about a detection? Contact me on Discord for review." -ForegroundColor DarkGray
-    Write-Host ""
-    Write-SectionRule
-    Write-Host ""
-    Read-Host "  Press Enter to return to the main menu"
+    Write-Host ''
+    Write-Host '  MODWARDEN - by albyi_' -ForegroundColor DarkCyan
+    Write-Host '  Discord: albyi_i' -ForegroundColor DarkGray
+    Write-Host ''
+    Read-Host '  Press Enter to return to the main menu'
 }
 
 # ---------------------------------------------------------------------------
