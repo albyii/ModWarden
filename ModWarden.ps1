@@ -10,10 +10,6 @@
         powershell -ExecutionPolicy Bypass -Command "Invoke-Expression (Invoke-RestMethod 'https://raw.githubusercontent.com/<you>/<repo>/main/ModWarden.ps1')"
 #>
 
-param(
-    [switch]$ConsoleMode
-)
-
 # ---------------------------------------------------------------------------
 #  SIGNATURE DATA
 # ---------------------------------------------------------------------------
@@ -967,527 +963,55 @@ function Show-Report {
 }
 
 # ---------------------------------------------------------------------------
-#  CONSOLE MODE
+#  MAIN LOOP
 # ---------------------------------------------------------------------------
 
-function Invoke-ConsoleMode {
-    while ($true) {
-        $choice = Show-MainMenu
-        switch ($choice) {
-            "1" {
-                $path = Select-ModsPath
-                if ($path) {
-                    Show-Banner
-                    Write-Host "  Scanning: $path"
-                    Write-Host ""
-                    Invoke-ModsScan -ModsPath $path -TargetLabel $path
-                }
-            }
-            "2" {
+while ($true) {
+    $choice = Show-MainMenu
+    switch ($choice) {
+        "1" {
+            $path = Select-ModsPath
+            if ($path) {
                 Show-Banner
-                Write-BoxTop
-                Write-BoxLine -Text "FULL PC SCAN" -TextColor Yellow
-                Write-BoxBottom
+                Write-Host "  Scanning: $path"
                 Write-Host ""
-                Write-Host "  ModWarden will search known Minecraft/launcher locations" -ForegroundColor DarkGray
-                Write-Host "  across the PC instead of walking the entire filesystem," -ForegroundColor DarkGray
-                Write-Host "  so this stays fast even on large drives." -ForegroundColor DarkGray
-                Write-Host ""
-                Show-MenuOption -Key "1" -Title "CONTINUE"
-                Write-Host ""
-                Show-MenuOption -Key "2" -Title "BACK"
-                Write-Host ""
-                Write-SectionRule
-                Write-Host ""
-                $c = Read-Host "  Select an option [1-2]"
-                if ($c -eq "1") { Invoke-FullPcScan }
+                Invoke-ModsScan -ModsPath $path -TargetLabel $path
             }
-            "3" {
-                Show-Banner
-                Write-BoxTop
-                Write-BoxLine -Text "CUSTOM PATH" -TextColor Yellow
-                Write-BoxBottom
-                Write-Host ""
-                $p = Read-Host "  Enter directory to scan"
-                if (Test-Path $p) {
-                    Invoke-ModsScan -ModsPath $p -TargetLabel $p
-                } else {
-                    Write-Host "  Path not found." -ForegroundColor Red
-                    Start-Sleep -Seconds 2
-                }
-            }
-            "4" { Write-Host "  Exiting ModWarden." -ForegroundColor DarkGray; break }
-            default { }
         }
-    }
-}
-
-# ---------------------------------------------------------------------------
-#  INTERACTIVE DESKTOP UI
-# ---------------------------------------------------------------------------
-
-function Get-GuiVerdict {
-    param([int]$Score)
-    if ($Score -ge 86) { return "VERY HIGH CONFIDENCE CHEATER" }
-    if ($Score -ge 71) { return "HIGH CONFIDENCE CHEATER" }
-    if ($Score -ge 51) { return "CHEATER" }
-    if ($Score -ge 41) { return "SUSPICIOUS" }
-    if ($Score -ge 21) { return "LOW RISK" }
-    return "LOW"
-}
-
-function Get-GuiVerdictColor {
-    param([int]$Score)
-    if ($Score -ge 51) { return [System.Drawing.Color]::FromArgb(255,90,100) }
-    if ($Score -ge 41) { return [System.Drawing.Color]::FromArgb(255,190,80) }
-    return [System.Drawing.Color]::FromArgb(90,220,150)
-}
-
-function Build-GuiReportText {
-    param($Results, $TargetLabel, $FilesAnalyzed, $ElapsedSeconds, $Mode, $JvmInfo)
-
-    $jarCount = @($Results).Count
-    $sorted = @($Results | Sort-Object @{Expression={ [int]$_.Score };Descending=$true}, @{Expression={$_.Name};Ascending=$true})
-    $topScore = if ($jarCount -gt 0) { [int]$sorted[0].Score } else { 0 }
-    $verdict = Get-GuiVerdict $topScore
-
-    $sb = New-Object System.Text.StringBuilder
-    [void]$sb.AppendLine("MODWARDEN // FORENSIC REPORT")
-    [void]$sb.AppendLine("══════════════════════════════════════════════════════════════════════")
-    [void]$sb.AppendLine("MODE       $Mode")
-    [void]$sb.AppendLine("TARGET     $TargetLabel")
-    [void]$sb.AppendLine("FILES      $FilesAnalyzed")
-    [void]$sb.AppendLine("JARS       $jarCount")
-    [void]$sb.AppendLine("TIME       $([Math]::Round($ElapsedSeconds,2))s")
-    [void]$sb.AppendLine("")
-    [void]$sb.AppendLine("RISK ASSESSMENT")
-    [void]$sb.AppendLine("$topScore / 100    $verdict")
-    [void]$sb.AppendLine("")
-
-    $suspicious = @($sorted | Where-Object { [int]$_.Score -ge 25 })
-    if ($suspicious.Count -gt 0) {
-        [void]$sb.AppendLine("DETECTIONS")
-        $i=1
-        foreach ($r in $suspicious) {
-            $conf = if ($r.Score -ge 71) { "HIGH" } elseif ($r.Score -ge 51) { "MEDIUM" } else { "LOW" }
-            [void]$sb.AppendLine("")
-            [void]$sb.AppendLine(("[{0:D2}] {1}   SCORE {2}/100   CONFIDENCE {3}" -f $i,$r.Name,[int]$r.Score,$conf))
-            [void]$sb.AppendLine("     PATH: $($r.Path)")
-            if ($r.PatternHits.Count) { [void]$sb.AppendLine("     PATTERNS: $($r.PatternHits -join ', ')") }
-            if ($r.StringHits.Count) { [void]$sb.AppendLine("     COMPONENTS: $($r.StringHits -join ', ')") }
-            if ($r.BypassFlags.Count) { [void]$sb.AppendLine("     SUPPORTING: $($r.BypassFlags -join ' | ')") }
-            if ($r.ObfuscationFlags.Count) { [void]$sb.AppendLine("     OBFUSCATION: $($r.ObfuscationFlags -join ' | ')") }
-            if ($r.ObfuscatorHits.Count) { [void]$sb.AppendLine("     OBFUSCATORS: $($r.ObfuscatorHits -join ', ')") }
-            if ($r.FullwidthHits.Count) { [void]$sb.AppendLine("     FULLWIDTH: $($r.FullwidthHits.Count) indicator(s)") }
-            if ($r.Source) { [void]$sb.AppendLine("     SOURCE: $($r.Source.Url) [$($r.Source.Classification)]") }
-            $i++
+        "2" {
+            Show-Banner
+            Write-BoxTop
+            Write-BoxLine -Text "FULL PC SCAN" -TextColor Yellow
+            Write-BoxBottom
+            Write-Host ""
+            Write-Host "  ModWarden will search known Minecraft/launcher locations" -ForegroundColor DarkGray
+            Write-Host "  across the PC instead of walking the entire filesystem," -ForegroundColor DarkGray
+            Write-Host "  so this stays fast even on large drives." -ForegroundColor DarkGray
+            Write-Host ""
+            Show-MenuOption -Key "1" -Title "CONTINUE"
+            Write-Host ""
+            Show-MenuOption -Key "2" -Title "BACK"
+            Write-Host ""
+            Write-SectionRule
+            Write-Host ""
+            $c = Read-Host "  Select an option [1-2]"
+            if ($c -eq "1") { Invoke-FullPcScan }
         }
-    } else {
-        [void]$sb.AppendLine("DETECTIONS")
-        [void]$sb.AppendLine("No files reached the suspicious threshold.")
-    }
-
-    [void]$sb.AppendLine("")
-    [void]$sb.AppendLine("JVM / RUNTIME")
-    if ($JvmInfo.Running) {
-        if ($JvmInfo.Flags.Count) {
-            foreach ($f in $JvmInfo.Flags) { [void]$sb.AppendLine("$f") }
-        } else { [void]$sb.AppendLine("Java process active; no injection flags found.") }
-    } else { [void]$sb.AppendLine("No active Java process detected.") }
-
-    [void]$sb.AppendLine("")
-    [void]$sb.AppendLine("VERDICT: $verdict")
-    [void]$sb.AppendLine("ModWarden threshold: 51+ = CHEATER.")
-    [void]$sb.AppendLine("")
-    [void]$sb.AppendLine("Static signatures are evidence for review, not mathematical proof of player behavior.")
-    return $sb.ToString()
-}
-
-
-function Invoke-GuiParallelJarAnalysis {
-    param(
-        [System.IO.FileInfo[]]$Jars,
-        [int]$ThrottleLimit = 8,
-        [scriptblock]$ProgressCallback,
-        [scriptblock]$IsCancelled
-    )
-
-    if (-not $Jars -or $Jars.Count -eq 0) { return @() }
-
-    $iss = [System.Management.Automation.Runspaces.InitialSessionState]::CreateDefault()
-    foreach ($fn in @(
-        'Get-Sha1Hash','Test-ModrinthVerified','Get-DownloadSource',
-        'Test-FullwidthUnicode','Get-ObfuscationFlags','Test-KnownObfuscator','Analyze-Jar'
-    )) {
-        $def = Get-Item "function:$fn" -ErrorAction Stop
-        $entry = New-Object System.Management.Automation.Runspaces.SessionStateFunctionEntry($fn, $def.Definition)
-        $iss.Commands.Add($entry)
-    }
-    foreach ($varName in @('CheatPatterns','CheatStrings','KnownObfuscators','SourceClassification','KnownClients')) {
-        $val = Get-Variable -Name $varName -Scope Script -ValueOnly
-        $entry = New-Object System.Management.Automation.Runspaces.SessionStateVariableEntry($varName, $val, $null)
-        $iss.Variables.Add($entry)
-    }
-
-    $pool = [runspacefactory]::CreateRunspacePool(1, $ThrottleLimit, $iss, $Host)
-    $pool.Open()
-    $tasks = New-Object System.Collections.Generic.List[object]
-    foreach ($jar in $Jars) {
-        $ps = [powershell]::Create()
-        $ps.RunspacePool = $pool
-        [void]$ps.AddScript({ param($Path) Analyze-Jar -JarPath $Path }).AddArgument($jar.FullName)
-        $tasks.Add([pscustomobject]@{ Pipe=$ps; Handle=$ps.BeginInvoke(); Path=$jar.FullName; Name=$jar.Name; Done=$false })
-    }
-
-    $results = New-Object System.Collections.Generic.List[object]
-    $total = $tasks.Count
-    $completed = 0
-    $lastCurrent = ''
-
-    try {
-        while ($completed -lt $total) {
-            $cancelled = $false
-            if ($IsCancelled) { $cancelled = [bool](& $IsCancelled) }
-
-            if ($cancelled) {
-                foreach ($t in $tasks | Where-Object { -not $_.Done }) {
-                    try { $t.Pipe.Stop() } catch { }
-                }
-                break
+        "3" {
+            Show-Banner
+            Write-BoxTop
+            Write-BoxLine -Text "CUSTOM PATH" -TextColor Yellow
+            Write-BoxBottom
+            Write-Host ""
+            $p = Read-Host "  Enter directory to scan"
+            if (Test-Path $p) {
+                Invoke-ModsScan -ModsPath $p -TargetLabel $p
+            } else {
+                Write-Host "  Path not found." -ForegroundColor Red
+                Start-Sleep -Seconds 2
             }
-
-            $finishedThisPass = $false
-            foreach ($t in $tasks) {
-                if ($t.Done -or -not $t.Handle.IsCompleted) { continue }
-                $finishedThisPass = $true
-                $t.Done = $true
-                $completed++
-                try {
-                    $r = $t.Pipe.EndInvoke($t.Handle)
-                    if ($r) { foreach ($item in @($r)) { [void]$results.Add($item) } }
-                } catch { }
-            }
-
-            $active = @($tasks | Where-Object { -not $_.Done })
-            $current = if ($active.Count -gt 0) { $active[0].Name } elseif ($completed -gt 0) { $tasks[$completed-1].Name } else { '' }
-            $detections = @($results | Where-Object { $_ -and [int]$_.Score -ge 25 }).Count
-            if ($ProgressCallback -and ($finishedThisPass -or $current -ne $lastCurrent -or $completed -eq $total)) {
-                & $ProgressCallback $completed $total $current $detections
-                $lastCurrent = $current
-            }
-
-            [System.Windows.Forms.Application]::DoEvents()
-            Start-Sleep -Milliseconds 70
         }
+        "4" { Write-Host "  Exiting ModWarden." -ForegroundColor DarkGray; break }
+        default { }
     }
-    finally {
-        foreach ($t in $tasks) { try { $t.Pipe.Dispose() } catch { } }
-        try { $pool.Close() } catch { }
-        try { $pool.Dispose() } catch { }
-    }
-
-    return @($results)
 }
-
-function Invoke-GuiJarScan {
-    param([string]$ModsPath, [string]$TargetLabel, [string]$Mode = "MINECRAFT", [scriptblock]$ProgressCallback, [scriptblock]$IsCancelled)
-    $jars = @(Get-ChildItem -Path $ModsPath -Filter *.jar -File -ErrorAction SilentlyContinue)
-    $sw = [System.Diagnostics.Stopwatch]::StartNew()
-    $results = Invoke-GuiParallelJarAnalysis -Jars $jars -ProgressCallback $ProgressCallback -IsCancelled $IsCancelled
-    $sw.Stop()
-    $jvm = Get-JvmInjectionFlags
-    return @{ Results=$results; Target=$TargetLabel; Files=$jars.Count; Seconds=$sw.Elapsed.TotalSeconds; Mode=$Mode; JVM=$jvm; Path=$ModsPath }
-}
-
-function Invoke-GuiFullPcScan {
-    param([scriptblock]$ProgressCallback, [scriptblock]$IsCancelled)
-    $targets = Get-FullPcScanTargets
-    $allJars = New-Object System.Collections.Generic.List[object]
-    foreach ($t in $targets) {
-        Get-ChildItem -Path $t -Filter *.jar -Recurse -File -ErrorAction SilentlyContinue -Force | ForEach-Object { $allJars.Add($_) }
-    }
-    $allJars = @($allJars | Sort-Object FullName -Unique)
-    $sw = [System.Diagnostics.Stopwatch]::StartNew()
-    $results = Invoke-GuiParallelJarAnalysis -Jars $allJars -ProgressCallback $ProgressCallback -IsCancelled $IsCancelled
-    $sw.Stop()
-    $jvm = Get-JvmInjectionFlags
-    return @{ Results=$results; Target="Full PC ($($targets.Count) location(s) checked)"; Files=$allJars.Count; Seconds=$sw.Elapsed.TotalSeconds; Mode="FULL PC"; JVM=$jvm; Path=$null }
-}
-
-function Start-ModWardenGui {
-    try {
-        Add-Type -AssemblyName System.Windows.Forms
-        Add-Type -AssemblyName System.Drawing
-        [System.Windows.Forms.Application]::EnableVisualStyles()
-    } catch {
-        Write-Host "ModWarden GUI requires Windows PowerShell / Windows Forms." -ForegroundColor Red
-        Write-Host "Run with -ConsoleMode instead." -ForegroundColor Yellow
-        return
-    }
-
-    # -----------------------------------------------------------------------
-    # MODWARDEN PRO UI
-    # Responsive layout: everything is docked/anchored so resizing never
-    # leaves the interface floating off-center.
-    # -----------------------------------------------------------------------
-    $bg      = [System.Drawing.Color]::FromArgb(7,10,16)
-    $surface = [System.Drawing.Color]::FromArgb(12,17,26)
-    $card    = [System.Drawing.Color]::FromArgb(16,23,34)
-    $card2   = [System.Drawing.Color]::FromArgb(20,29,43)
-    $line    = [System.Drawing.Color]::FromArgb(38,52,70)
-    $cyan    = [System.Drawing.Color]::FromArgb(70,220,255)
-    $green   = [System.Drawing.Color]::FromArgb(87,230,160)
-    $amber   = [System.Drawing.Color]::FromArgb(255,193,92)
-    $red     = [System.Drawing.Color]::FromArgb(255,92,108)
-    $text    = [System.Drawing.Color]::FromArgb(240,246,252)
-    $muted   = [System.Drawing.Color]::FromArgb(132,149,171)
-
-    $form = New-Object System.Windows.Forms.Form
-    $form.Text = "MODWARDEN  //  Minecraft Forensic Analyzer"
-    $form.StartPosition = 'CenterScreen'
-    $form.ClientSize = New-Object System.Drawing.Size(1280,800)
-    $form.MinimumSize = New-Object System.Drawing.Size(1080,700)
-    $form.BackColor = $bg
-    $form.ForeColor = $text
-    $form.Font = New-Object System.Drawing.Font('Segoe UI',9)
-    $form.AutoScaleMode = 'Dpi'
-    $form.KeyPreview = $true
-
-    function New-Line([System.Windows.Forms.Control]$Parent,[int]$x,[int]$y,[int]$w,[int]$h=1) {
-        $p=New-Object System.Windows.Forms.Panel
-        $p.BackColor=$line; $p.Location=New-Object System.Drawing.Point($x,$y); $p.Size=New-Object System.Drawing.Size($w,$h)
-        $Parent.Controls.Add($p); return $p
-    }
-    function New-Label([System.Windows.Forms.Control]$Parent,[string]$Text,[int]$Size,[System.Drawing.Color]$Color,[int]$X,[int]$Y,[int]$W,[int]$H,[bool]$Bold=$false) {
-        $l=New-Object System.Windows.Forms.Label
-        $l.Text=$Text; $l.ForeColor=$Color; $l.Location=New-Object System.Drawing.Point($X,$Y); $l.Size=New-Object System.Drawing.Size($W,$H)
-        $l.Font=New-Object System.Drawing.Font('Segoe UI',$Size,([System.Drawing.FontStyle]$(if($Bold){'Bold'}else{'Regular'})))
-        $l.AutoEllipsis=$true; $l.TextAlign='MiddleLeft'; $Parent.Controls.Add($l); return $l
-    }
-    function New-ActionButton([System.Windows.Forms.Control]$Parent,[string]$Text,[System.Drawing.Color]$Accent) {
-        $b=New-Object System.Windows.Forms.Button
-        $b.Text=$Text; $b.Size=New-Object System.Drawing.Size(245,50); $b.Margin=New-Object System.Windows.Forms.Padding(0,0,0,9)
-        $b.FlatStyle='Flat'; $b.FlatAppearance.BorderSize=1; $b.FlatAppearance.BorderColor=$line
-        $b.BackColor=$card2; $b.ForeColor=$text
-        $b.Font=New-Object System.Drawing.Font('Segoe UI Semibold',9.5,[System.Drawing.FontStyle]::Bold)
-        $b.TextAlign='MiddleLeft'; $b.Padding=New-Object System.Windows.Forms.Padding(18,0,8,0)
-        $b.Cursor=[System.Windows.Forms.Cursors]::Hand
-        $b.FlatAppearance.MouseOverBackColor=[System.Drawing.Color]::FromArgb(28,40,57)
-        $b.FlatAppearance.MouseDownBackColor=[System.Drawing.Color]::FromArgb(34,48,68)
-        $b.Tag=$Accent
-        $Parent.Controls.Add($b)
-        return $b
-    }
-
-    # Header ----------------------------------------------------------------
-    $header=New-Object System.Windows.Forms.Panel
-    $header.Dock='Top'; $header.Height=92; $header.BackColor=$surface; $header.Padding=New-Object System.Windows.Forms.Padding(28,0,28,0)
-    $form.Controls.Add($header)
-
-    $brand=New-Label $header '◈  M O D W A R D E N' 21 $cyan 28 14 500 34 $true
-    $sub=New-Label $header 'MINECRAFT FORENSIC ANALYZER   /   STATIC MOD INTELLIGENCE' 8.5 $muted 31 51 700 22
-    $status=New-Label $header '●  READY' 9.5 $green 0 29 180 30 $true
-    $status.Anchor='Top,Right'; $status.TextAlign='MiddleRight'
-
-    $headerLine=New-Line $header 0 91 1 1
-    $header.Add_Resize({$headerLine.Width=$header.ClientSize.Width})
-
-    # Main shell -------------------------------------------------------------
-    $shell=New-Object System.Windows.Forms.Panel
-    $shell.Dock='Fill'; $shell.BackColor=$bg; $form.Controls.Add($shell)
-
-    # Left rail: fixed, clean and balanced.
-    $rail=New-Object System.Windows.Forms.Panel
-    $rail.Dock='Left'; $rail.Width=285; $rail.BackColor=$surface; $rail.Padding=New-Object System.Windows.Forms.Padding(20,22,20,20)
-    $shell.Controls.Add($rail)
-
-    $ops=New-Label $rail 'OPERATIONS' 8 $muted 20 22 240 22 $true
-    $btnMinecraft=New-ActionButton $rail '▣   MINECRAFT SCAN' $cyan
-    $btnFull=New-ActionButton $rail '◉   FULL PC SCAN' $cyan
-    $btnCustom=New-ActionButton $rail '⌁   CUSTOM PATH' $cyan
-    $btnOpen=New-ActionButton $rail '↗   OPEN LAST FOLDER' $cyan
-    $btnOpen.Enabled=$false
-    $btnMinecraft.Location=New-Object System.Drawing.Point(20,54); $btnFull.Location=New-Object System.Drawing.Point(20,113); $btnCustom.Location=New-Object System.Drawing.Point(20,172); $btnOpen.Location=New-Object System.Drawing.Point(20,231)
-
-    $railLine=New-Line $rail 20 300 245 1
-    $tools=New-Label $rail 'REPORT TOOLS' 8 $muted 20 316 240 22 $true
-    $btnCopy=New-ActionButton $rail '⧉   COPY REPORT' $cyan; $btnCopy.Enabled=$false; $btnCopy.Location=New-Object System.Drawing.Point(20,348)
-    $btnCommand=New-ActionButton $rail '⧉   COPY LAUNCH COMMAND' $cyan; $btnCommand.Location=New-Object System.Drawing.Point(20,407)
-    $btnExit=New-ActionButton $rail '×   EXIT' $red; $btnExit.Location=New-Object System.Drawing.Point(20,466)
-    $note=New-Label $rail "STATIC ANALYSIS ONLY`r`nReview evidence before moderation." 8.2 $muted 20 535 245 48 $false
-
-    # Content area -----------------------------------------------------------
-    $content=New-Object System.Windows.Forms.Panel
-    $content.Dock='Fill'; $content.BackColor=$bg; $content.Padding=New-Object System.Windows.Forms.Padding(28,24,28,24)
-    $shell.Controls.Add($content)
-
-    $title=New-Label $content 'COMMAND CENTER' 16 $text 28 22 500 34 $true
-    $targetLabel=New-Label $content 'NO TARGET SELECTED' 8 $muted 28 53 600 20 $true
-
-    # Stat cards in a TableLayoutPanel keep them perfectly aligned at every size.
-    $stats=New-Object System.Windows.Forms.TableLayoutPanel
-    $stats.Location=New-Object System.Drawing.Point(28,82); $stats.Size=New-Object System.Drawing.Size(1,82); $stats.Anchor='Top,Left,Right'
-    $stats.ColumnCount=4; $stats.RowCount=1; $stats.BackColor=$bg; $stats.Padding=New-Object System.Windows.Forms.Padding(0)
-    for($i=0;$i -lt 4;$i++){[void]$stats.ColumnStyles.Add((New-Object System.Windows.Forms.ColumnStyle([System.Windows.Forms.SizeType]::Percent,25)))}
-    $content.Controls.Add($stats)
-    $statLabels=@()
-    $names=@('JARS ANALYZED','FILES','TOP SCORE','VERDICT')
-    for($i=0;$i -lt 4;$i++){
-        $cardPanel=New-Object System.Windows.Forms.Panel
-        $cardPanel.Dock='Fill'; $cardPanel.BackColor=$card; $cardPanel.Margin=New-Object System.Windows.Forms.Padding($(if($i -eq 0){0}else{5}),0,5,0)
-        [void]$stats.Controls.Add($cardPanel,$i,0)
-        $l=New-Label $cardPanel $names[$i] 7.5 $muted 15 10 220 20 $true
-        $v=New-Label $cardPanel '—' 14 $text 15 31 230 38 $true
-        $statLabels += $v
-    }
-
-    # Report area is the main visual anchor and expands with the window.
-    $report=New-Object System.Windows.Forms.RichTextBox
-    $report.Location=New-Object System.Drawing.Point(28,180); $report.Size=New-Object System.Drawing.Size(1,1); $report.Anchor='Top,Bottom,Left,Right'
-    $report.BackColor=[System.Drawing.Color]::FromArgb(5,8,13); $report.ForeColor=$text; $report.BorderStyle='FixedSingle'; $report.Font=New-Object System.Drawing.Font('Consolas',9.5)
-    $report.ReadOnly=$true; $report.WordWrap=$false; $report.DetectUrls=$false; $report.Padding=New-Object System.Windows.Forms.Padding(14,14,14,14)
-    $report.Text="MODWARDEN // READY`r`n`r`nSelect an operation to begin.`r`n`r`nThe scan is static: JARs are inspected, never executed."
-    $content.Controls.Add($report)
-
-    # Live scan overlay. It is centered by a layout panel instead of hard-coded
-    # coordinates, so it remains centered after resizing.
-    $scanOverlay=New-Object System.Windows.Forms.Panel
-    $scanOverlay.BackColor=[System.Drawing.Color]::FromArgb(248,10,14,22)
-    $scanOverlay.Visible=$false; $scanOverlay.Anchor='Top,Bottom,Left,Right'; $content.Controls.Add($scanOverlay)
-
-    $scanCard=New-Object System.Windows.Forms.Panel
-    $scanCard.BackColor=$surface; $scanCard.BorderStyle='FixedSingle'; $scanCard.Size=New-Object System.Drawing.Size(720,390)
-    $scanCard.Anchor='None'; $scanOverlay.Controls.Add($scanCard)
-
-    $scanIcon=New-Label $scanCard '◈' 25 $cyan 34 24 55 45 $true
-    $scanHeader=New-Label $scanCard 'LIVE FORENSIC SCAN' 15 $text 92 25 550 32 $true
-    $scanPhase=New-Label $scanCard 'INITIALIZING ANALYSIS ENGINE' 8 $muted 94 57 540 22 $true
-    $scanCurrentCaption=New-Label $scanCard 'CURRENT FILE' 7.5 $muted 36 100 640 20 $true
-    $scanCurrent=New-Label $scanCard 'Preparing scan queue...' 9.5 $text 36 121 640 34 $true
-    $scanCurrent.Font=New-Object System.Drawing.Font('Consolas',9.5,[System.Drawing.FontStyle]::Bold)
-
-    $scanProgress=New-Object System.Windows.Forms.ProgressBar
-    $scanProgress.Location=New-Object System.Drawing.Point(36,174); $scanProgress.Size=New-Object System.Drawing.Size(648,22); $scanProgress.Minimum=0; $scanProgress.Maximum=100; $scanProgress.Style='Continuous'; $scanCard.Controls.Add($scanProgress)
-    $scanPercent=New-Label $scanCard '0%' 20 $text 36 208 120 42 $true
-    $scanCount=New-Label $scanCard '0 / 0 FILES' 8.5 $muted 156 218 200 25 $true
-    $scanDetections=New-Label $scanCard '0 DETECTIONS' 9.5 $cyan 36 265 260 28 $true
-    $scanWorker=New-Label $scanCard '8 PARALLEL ANALYSIS WORKERS' 8 $muted 36 291 330 22 $true
-
-    $btnCancel=New-Object System.Windows.Forms.Button
-    $btnCancel.Text='■   CANCEL SCAN'; $btnCancel.Location=New-Object System.Drawing.Point(464,257); $btnCancel.Size=New-Object System.Drawing.Size(220,55)
-    $btnCancel.FlatStyle='Flat'; $btnCancel.FlatAppearance.BorderSize=1; $btnCancel.FlatAppearance.BorderColor=[System.Drawing.Color]::FromArgb(120,55,68)
-    $btnCancel.BackColor=[System.Drawing.Color]::FromArgb(43,23,30); $btnCancel.ForeColor=$red; $btnCancel.Font=New-Object System.Drawing.Font('Segoe UI Semibold',9.5,[System.Drawing.FontStyle]::Bold); $btnCancel.Cursor=[System.Windows.Forms.Cursors]::Hand
-    $btnCancel.FlatAppearance.MouseOverBackColor=[System.Drawing.Color]::FromArgb(65,28,38); $scanCard.Controls.Add($btnCancel)
-    $scanHint=New-Label $scanCard 'Cancel is safe. Scanned JARs are never modified.' 7.8 $muted 36 333 648 22 $false
-
-    # Keep the overlay/card geometrically centered whenever the content changes.
-    $centerScan={
-        $scanOverlay.Location=New-Object System.Drawing.Point(0,0); $scanOverlay.Size=$content.ClientSize
-        $scanCard.Left=[Math]::Max(0,[int](($scanOverlay.ClientSize.Width-$scanCard.Width)/2))
-        $scanCard.Top=[Math]::Max(0,[int](($scanOverlay.ClientSize.Height-$scanCard.Height)/2))
-    }
-    $content.Add_Resize($centerScan)
-
-    $script:GuiScanCancelled=$false
-    $script:GuiLastReport=''; $script:GuiLastPath=$null
-
-    function Set-GuiBusy([bool]$Busy,[string]$Message){
-        $btnMinecraft.Enabled=-not $Busy; $btnFull.Enabled=-not $Busy; $btnCustom.Enabled=-not $Busy
-        $btnCommand.Enabled=-not $Busy; $btnCopy.Enabled=(-not $Busy -and [bool]$script:GuiLastReport); $btnOpen.Enabled=(-not $Busy -and [bool]$script:GuiLastPath)
-        $btnExit.Enabled=-not $Busy; $btnCancel.Enabled=$Busy
-        $status.Text=if($Busy){'●  SCANNING'}else{'●  READY'}
-        $status.ForeColor=if($Busy){$amber}else{$green}
-        $scanOverlay.Visible=$Busy
-        if($Busy){& $centerScan;$scanOverlay.BringToFront();$scanCard.BringToFront();$report.Visible=$false}else{$report.Visible=$true;$report.BringToFront()}
-        if($Message){$report.Text=$Message;$report.SelectionStart=0;$report.SelectionLength=0}
-        [System.Windows.Forms.Application]::DoEvents()
-    }
-
-    function Update-GuiScanProgress([int]$Completed,[int]$Total,[string]$Current,[int]$Detections){
-        if($Total -le 0){$pct=0}else{$pct=[Math]::Min(100,[Math]::Max(0,[int](($Completed*100.0)/$Total)))}
-        $scanProgress.Value=$pct; $scanPercent.Text="$pct%"; $scanCount.Text="$Completed / $Total FILES"
-        $scanDetections.Text="$Detections DETECTION$(if($Detections -eq 1){''}else{'S'})"
-        $scanCurrent.Text=if($Current){$Current}else{'Preparing scan queue...'}
-        $status.Text="●  SCANNING  $pct%"
-        [System.Windows.Forms.Application]::DoEvents()
-    }
-
-    $btnCancel.Add_Click({
-        $script:GuiScanCancelled=$true; $btnCancel.Enabled=$false
-        $scanPhase.Text='CANCELLING  /  SAFE WORKER SHUTDOWN'; $scanCurrent.Text='Stopping active analysis workers...'
-        $status.Text='■  CANCELLING'; $status.ForeColor=$red
-        [System.Windows.Forms.Application]::DoEvents()
-    })
-
-    function Show-GuiResult($scan){
-        $script:GuiLastReport=Build-GuiReportText -Results $scan.Results -TargetLabel $scan.Target -FilesAnalyzed $scan.Files -ElapsedSeconds $scan.Seconds -Mode $scan.Mode -JvmInfo $scan.JVM
-        $script:GuiLastPath=$scan.Path; $report.Text=$script:GuiLastReport; $report.SelectionStart=0; $report.SelectionLength=0
-        $sorted=@($scan.Results|Sort-Object @{Expression={[int]$_.Score};Descending=$true}); $top=if($sorted.Count){[int]$sorted[0].Score}else{0}
-        $statLabels[0].Text=$sorted.Count; $statLabels[1].Text=$scan.Files; $statLabels[2].Text="$top / 100"; $statLabels[2].ForeColor=Get-GuiVerdictColor $top
-        $statLabels[3].Text=Get-GuiVerdict $top; $statLabels[3].ForeColor=Get-GuiVerdictColor $top
-        $targetLabel.Text=($scan.Target.ToUpperInvariant())
-        $btnCopy.Enabled=$true; $btnOpen.Enabled=[bool]$script:GuiLastPath
-    }
-
-    function Run-GuiScan([string]$Mode,[string]$Path=$null){
-        $script:GuiScanCancelled=$false
-        $scanProgress.Value=0; $scanPercent.Text='0%'; $scanCount.Text='0 / 0 FILES'; $scanDetections.Text='0 DETECTIONS'; $scanCurrent.Text='Preparing scan queue...'
-        $scanPhase.Text="$Mode SCAN  /  INITIALIZING"
-        Set-GuiBusy $true ''
-        try {
-            if($Mode -eq 'MINECRAFT'){$scan=Invoke-GuiJarScan $Path $Path 'MINECRAFT' ${function:Update-GuiScanProgress} { return $script:GuiScanCancelled }}
-            elseif($Mode -eq 'CUSTOM'){$scan=Invoke-GuiJarScan $Path $Path 'CUSTOM' ${function:Update-GuiScanProgress} { return $script:GuiScanCancelled }}
-            else {$scan=Invoke-GuiFullPcScan ${function:Update-GuiScanProgress} { return $script:GuiScanCancelled }}
-            if($script:GuiScanCancelled){
-                $scanPhase.Text='SCAN CANCELLED'; $scanCurrent.Text='No final report generated.'
-                $report.Text="MODWARDEN // SCAN CANCELLED`r`n`r`nThe scan was stopped safely.`r`nNo scanned JAR was modified."
-                $report.SelectionStart=0; $report.SelectionLength=0
-            } else { Show-GuiResult $scan }
-        } catch { [System.Windows.Forms.MessageBox]::Show($_.Exception.Message,'ModWarden — Scan Error','OK','Error') | Out-Null }
-        finally { Set-GuiBusy $false '' }
-    }
-
-    $btnMinecraft.Add_Click({
-        $installs=@(Find-MinecraftInstallations)
-        if($installs.Count -eq 0){[System.Windows.Forms.MessageBox]::Show('No Minecraft installations were found.','ModWarden','OK','Information')|Out-Null;return}
-        $dlg=New-Object System.Windows.Forms.Form; $dlg.Text='MODWARDEN  //  SELECT INSTANCE'; $dlg.ClientSize=New-Object System.Drawing.Size(720,450); $dlg.StartPosition='CenterParent'; $dlg.BackColor=$bg; $dlg.ForeColor=$text; $dlg.Font=New-Object System.Drawing.Font('Segoe UI',9); $dlg.MinimizeBox=$false; $dlg.MaximizeBox=$false
-        $dl=New-Label $dlg 'SELECT MINECRAFT INSTANCE' 14 $text 24 22 620 34 $true
-        $list=New-Object System.Windows.Forms.ListBox; $list.Location=New-Object System.Drawing.Point(24,68); $list.Size=New-Object System.Drawing.Size(672,275); $list.BackColor=$card; $list.ForeColor=$text; $list.BorderStyle='FixedSingle'; $list.Font=New-Object System.Drawing.Font('Consolas',9); $dlg.Controls.Add($list)
-        foreach($inst in $installs){[void]$list.Items.Add("$($inst.Name)  —  $($inst.Path)")}; if($list.Items.Count -gt 0){$list.SelectedIndex=0}
-        $go=New-Object System.Windows.Forms.Button; $go.Text='SCAN SELECTED  →'; $go.Location=New-Object System.Drawing.Point(476,370); $go.Size=New-Object System.Drawing.Size(220,48); $go.FlatStyle='Flat'; $go.FlatAppearance.BorderSize=1; $go.FlatAppearance.BorderColor=$cyan; $go.BackColor=$card2; $go.ForeColor=$cyan; $go.Font=New-Object System.Drawing.Font('Segoe UI Semibold',9,[System.Drawing.FontStyle]::Bold); $go.Cursor=[System.Windows.Forms.Cursors]::Hand; $dlg.Controls.Add($go)
-        $go.Add_Click({if($list.SelectedIndex -ge 0){$dlg.Tag=$installs[$list.SelectedIndex].Path;$dlg.DialogResult='OK';$dlg.Close()}})
-        if($dlg.ShowDialog($form) -eq 'OK'){Run-GuiScan 'MINECRAFT' ([string]$dlg.Tag)}
-    })
-    $btnFull.Add_Click({
-        $answer=[System.Windows.Forms.MessageBox]::Show('Search known Minecraft, launcher and Downloads locations?','MODWARDEN  //  FULL PC SCAN','YesNo','Question')
-        if($answer -eq 'Yes'){Run-GuiScan 'FULL PC'}
-    })
-    $btnCustom.Add_Click({
-        $dlg=New-Object System.Windows.Forms.FolderBrowserDialog; $dlg.Description='Select a folder containing Minecraft mods'; $dlg.ShowNewFolderButton=$false
-        if($dlg.ShowDialog() -eq 'OK'){Run-GuiScan 'CUSTOM' $dlg.SelectedPath}
-    })
-    $btnCopy.Add_Click({if($script:GuiLastReport){[System.Windows.Forms.Clipboard]::SetText($script:GuiLastReport);$status.Text='✓  REPORT COPIED';$status.ForeColor=$cyan;[System.Windows.Forms.Application]::DoEvents();Start-Sleep -Milliseconds 350;$status.Text='●  READY';$status.ForeColor=$green}})
-    $btnCommand.Add_Click({[System.Windows.Forms.Clipboard]::SetText('powershell -ExecutionPolicy Bypass -Command "Invoke-Expression (Invoke-RestMethod ''https://raw.githubusercontent.com/albyii/ModWarden/main/ModWarden.ps1'')"');$status.Text='✓  LAUNCH COMMAND COPIED';$status.ForeColor=$cyan;[System.Windows.Forms.Application]::DoEvents();Start-Sleep -Milliseconds 350;$status.Text='●  READY';$status.ForeColor=$green})
-    $btnOpen.Add_Click({if($script:GuiLastPath -and (Test-Path $script:GuiLastPath)){Start-Process explorer.exe -ArgumentList ('"{0}"' -f $script:GuiLastPath)}})
-    $btnExit.Add_Click({$form.Close()})
-    $form.Add_KeyDown({param($sender,$e) if($e.KeyCode -eq 'Escape' -and $btnCancel.Enabled){$btnCancel.PerformClick()}})
-
-    # Final layout pass ensures the report/stats have the exact usable width.
-    $layout={
-        $cw=$content.ClientSize.Width; $ch=$content.ClientSize.Height
-        $stats.Width=[Math]::Max(400,$cw-56)
-        $report.Width=[Math]::Max(400,$cw-56); $report.Height=[Math]::Max(260,$ch-204)
-        $scanOverlay.Size=$content.ClientSize
-        $scanCard.Left=[Math]::Max(0,[int](($scanOverlay.ClientSize.Width-$scanCard.Width)/2)); $scanCard.Top=[Math]::Max(0,[int](($scanOverlay.ClientSize.Height-$scanCard.Height)/2))
-    }
-    $content.Add_Resize($layout)
-    $form.Add_Shown({& $layout;& $centerScan;$form.Activate()})
-    [System.Windows.Forms.Application]::Run($form)
-}
-
-if ($ConsoleMode) {
-    Invoke-ConsoleMode
-} else {
-    Start-ModWardenGui
-}
-
